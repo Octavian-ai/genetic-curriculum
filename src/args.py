@@ -12,8 +12,8 @@ def get_args(args=None):
 	parser.add_argument('--bucket',					type=str,  default=None)
 	parser.add_argument('--gcs-dir',				type=str,  default=None)
 
-	parser.add_argument('--epochs', 				type=int,  default=40)
-	parser.add_argument('--micro-step', 			type=int,  default=1000)
+	parser.add_argument('--epochs', 				type=int,  default=99999999)
+	parser.add_argument('--micro-step', 			type=int,  default=100000)
 	parser.add_argument('--macro-step', 			type=int,  default=5)
 
 	parser.add_argument('--batch-size', 			type=int,  default=16)

@@ -16,14 +16,21 @@ class SingularSessionWorker(Worker):
 	
 	def __init__(self, init_params, hyperparam_spec):
 		self.model = None
-		self.sess = None
 		self.graph = None
+		self.sess = None
 
 		super().__init__(init_params, hyperparam_spec)
 		
 
 
 	def setup_model(self):
+		tf.logging.info("setup_model")
+
+		if self.sess is not None:
+			self.sess.close()
+
+		if self.graph is not None:
+			self.graph.close()
 
 		self.graph = tf.Graph()
 		with self.graph.as_default():
@@ -37,6 +44,9 @@ class SingularSessionWorker(Worker):
 				None,
 				self.friendly_params
 			)
+
+			if self.sess is None:
+				self.sess = tf.train.SingularMonitoredSession()
 
 
 		
@@ -59,19 +69,16 @@ class SingularSessionWorker(Worker):
 		if self.model is None:
 			self.setup_model()
 
-
 		with self.graph.as_default():
-			with tf.train.SingularMonitoredSession() as sess:
-				for i in range(steps):
-					_, loss = sess.run([self.model.train_op, self.model.loss])
+			for i in range(steps):
+				_, loss = self.sess.run([self.model.train_op, self.model.loss])
 				
 	def do_eval(self):
 		if self.model is None:
 			self.setup_model()
 
 		with self.graph.as_default():
-			with tf.train.SingularMonitoredSession() as sess:
-				return sess.run({"loss":self.model.loss})
+			return self.sess.run({"loss":self.model.loss})
 		
 
 

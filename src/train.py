@@ -17,11 +17,20 @@ from pbt import *
 from dnc import *
 
 
+class DatasetParam(FixedParam):
+
+	def __init__(self, v=None):
+		self.__setstate__(None)
+
+	def __getstate__(self):
+		return {}
+
+	def __setstate__(self, state):
+		self.v = repeat_copy.RepeatCopy(4, 16, 1, 2, 1, 2)
+
 
 
 def gen_param_spec(args):
-
-	dataset = repeat_copy.RepeatCopy(4, args.batch_size, 1, 2, 1, 2)
 
 	return {
 		"macro_step": FixedParamOf(args.macro_step),
@@ -29,7 +38,7 @@ def gen_param_spec(args):
 
 		"heritage": Heritage,
 		"model_id": ModelId,
-		"dataset": FixedParamOf(dataset)
+		"dataset": DatasetParam,
 	}
 
 def gen_input_fn(is_eval=False):
