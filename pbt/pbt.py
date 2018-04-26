@@ -13,6 +13,8 @@ import logging
 import sys
 import math
 
+from .pbt_param import FixedParam
+
 from util import Ploty
 
 logger = logging.getLogger(__name__)
@@ -254,8 +256,9 @@ class Supervisor(object):
 				self.plot_workers.add_result(epoch, fn(worker),  str(i)+key, "s", '-')
 
 			for key, val in worker.params.items():
-				if isinstance(val.value, int) or isinstance(val.value, float):
-					self.plot_hyper.add_result(epoch, val.value, str(i)+"_" +key)
+				if not isinstance(val, FixedParam):
+					if isinstance(val.value, int) or isinstance(val.value, float):
+						self.plot_hyper.add_result(epoch, val.value, str(i)+"_" +key)
 
 		for key, fn in measures.items():
 			vs = [fn(i) for i in self.workers]

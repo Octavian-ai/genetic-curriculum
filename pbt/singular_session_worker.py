@@ -18,6 +18,7 @@ class SingularSessionWorker(Worker):
 		self.model = None
 		self.graph = None
 		self.sess = None
+		self._params = {}
 
 		super().__init__(init_params, hyperparam_spec)
 		
@@ -28,9 +29,6 @@ class SingularSessionWorker(Worker):
 
 		if self.sess is not None:
 			self.sess.close()
-
-		if self.graph is not None:
-			self.graph.close()
 
 		self.graph = tf.Graph()
 		with self.graph.as_default():
@@ -61,8 +59,13 @@ class SingularSessionWorker(Worker):
 		
 	@params.setter
 	def params(self, value):
-		self._params = value;
-		self.setup_model()
+
+		dirty = value != self._params
+
+		self._params = value
+
+		if dirty:
+			self.setup_model()
 		
 	def do_step(self, steps):
 		# We lazily initialise the estimator as during unpickling we may not have all the params

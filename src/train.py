@@ -17,16 +17,42 @@ from pbt import *
 from dnc import *
 
 
-class DatasetParam(FixedParam):
+class DatasetParam(GeneticParam):
 
 	def __init__(self, v=None):
-		self.__setstate__(None)
 
-	def __getstate__(self):
-		return {}
+		self.v = v
 
-	def __setstate__(self, state):
-		self.v = repeat_copy.RepeatCopy(4, 16, 1, 2, 1, 2)
+		if self.v is None:
+			self.v = {
+				"max_length": 1
+			}
+
+	def mutate(self, heat):
+
+		nv = {
+			k: round(v + random.randint(-1,1)*heat)
+			for k, v in self.v.items()
+		}
+
+		return type(self)(nv)
+
+	@property
+	def score(self):
+		return self.v["max_length"]
+
+	@property
+	def value(self):
+		return repeat_copy.RepeatCopy(4, 16, 1, max(self.v["max_length"], 1), 1, 2)
+
+	def __str__(self):
+		return str(self.v)
+
+	def __eq__(self, other):
+		self.v == other.v
+
+
+
 
 
 
@@ -78,7 +104,7 @@ def gen_worker_init_params(args):
 def train(args):
 
 	def score(worker):
-		return worker.results.get("loss", 0) * worker.friendly_params["dataset"].num_bits
+		return -worker.results.get("loss", 0) * worker.params["dataset"].score
 
 	s = Supervisor(
 		args,
