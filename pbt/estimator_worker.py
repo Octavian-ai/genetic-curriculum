@@ -5,8 +5,8 @@ import numpy as np
 import traceback
 import os.path
 
-from .pbt import *
-from .pbt_param import *
+from .worker import Worker
+from .param import *
 from .params import *
 
 """### Train the model"""

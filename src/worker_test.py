@@ -1,13 +1,14 @@
 
 import unittest
-import os
-import os.path
-import sys
+import tensorflow as tf
 
 import pbt
 
 from .args import get_args
 from .train import gen_param_spec, gen_worker_init_params
+
+import logging
+logger = logging.getLogger(__name__)
 
 class WorkerTestCase(unittest.TestCase):
 
@@ -48,11 +49,22 @@ class WorkerTestCase(unittest.TestCase):
 		worker1.step(200)
 		worker1.eval()
 
+		logger.info("-------------- NOW TRANSFER PARAMS 1 --------------")
+
 		worker2 = self.vend_worker()
-		worker2.params = worker1.params
+		worker2.params = worker1.explore(1.0)
 		worker2.eval()
 
-		self.assertEqual(worker1.results["loss"], worker2.results["loss"], "Loss should be equal after param copy")
+		self.assertEqual(worker1.results, worker2.results, "Results should be equal after param explore copy")
+
+		logger.info("-------------- NOW TRANSFER PARAMS 2 --------------")
+
+		worker3 = self.vend_worker()
+		worker3.params = worker1.params
+		worker3.eval()
+
+		self.assertEqual(worker1.results, worker3.results, "Results should be equal after param copy")
+
 
 		# self.assertGreaterEqual(worker2.results["accuracy"], worker1.results["accuracy"])
 		# self.assertDictAlmostEqual(worker1.results, worker2.results, msg="Evaluation after param copy should be the same")
@@ -61,7 +73,8 @@ class WorkerTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':	
-	# tf.logging.set_verbosity('INFO')
+	tf.logging.set_verbosity('INFO')
+	logger.setLevel('INFO')
 	unittest.main()
 
 

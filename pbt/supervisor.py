@@ -9,97 +9,19 @@ import uuid
 import os
 import os.path
 import collections
-import logging
 import sys
 import math
 
-from .pbt_param import FixedParam
+from .param import FixedParam
 
 from util import Ploty
 
+import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 FP = collections.namedtuple('FallbackParam', ['value'])
 
-
-
-class Worker(object):
-	"""Runs a PBT experiment
-
-	Always provide a parameterless init so the Supervisor can spawn workers as needed
-
-	"""
-	def __init__(self, init_params, hyperparam_spec):
-		self.current_count = 0
-		self.total_count = 0
-		self.id = uuid.uuid1()
-		self.results = {}
-		self.init_params = init_params
-		self.gen_params(hyperparam_spec)
-
-	def gen_params(self, hyperparam_spec):
-		self.params = {
-			k: v() for k, v in hyperparam_spec.items()
-		}
-
-	@property
-	def params(self):
-		pass
-	
-	@params.setter
-	def params(self, params):
-		pass
-		
-	def reset_count(self):
-		self.current_count = 0
-	
-	def step(self, steps):
-		self.current_count += steps
-		self.total_count += steps
-		self.do_step(steps)
-	
-	def do_step(self, steps):
-		pass
- 
-	def eval(self):
-		self.results = self.do_eval()
-		return self.results
-	
-	def do_eval(self):
-		pass
-
-	def is_ready(self):
-		mi = self.params.get("micro_step", FP(1)).value
-		ma = self.params.get("macro_step", FP(5)).value
-
-		return self.current_count > mi * ma
-
-	def explore(self, heat):
-		return {
-			k:v.mutate(heat) for k, v in self.params.items()
-		}
-
-	@property
-	def macro_steps(self):
-		mi = self.params.get("micro_step", FP(1)).value
-		ma = self.params.get("macro_step", FP(5)).value
-		return self.total_count / mi / ma
-	
-
-	def save(self, path):
-		with open(path, 'wb') as file:
-			pickle.dump(self, file)
-
-	@classmethod
-	def load(cls, path, init_params):
-		with open(path, 'rb') as file:
-			w = pickle.load(file)
-		w.init_params = init_params
-		return w
-
-
-	 
 		
 		
 class Supervisor(object):

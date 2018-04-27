@@ -68,21 +68,20 @@ def gen_param_spec(args):
 	}
 
 def gen_input_fn(is_eval=False):
-
 	def g(params):
+		def gen():
+			seed = 123 if is_eval else None
+			dataset_tensors = params["dataset"](seed)
 
-		dataset_tensors = params["dataset"]()
+			return (
+				dataset_tensors.observations, 
+				{
+					"target": dataset_tensors.target,
+					"mask": dataset_tensors.mask,
+				}
+			)
 
-		for_tf = (
-			dataset_tensors.observations, 
-			{
-				"target": dataset_tensors.target,
-				"mask": dataset_tensors.mask,
-			}
-		)
-
-		return lambda: for_tf 
-
+		return gen
 	return g
 
 def gen_worker_init_params(args):

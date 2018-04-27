@@ -5,11 +5,9 @@ import numpy as np
 import traceback
 import os.path
 
-from .pbt import *
-from .pbt_param import *
+from .worker import Worker
+from .param import *
 from .params import *
-
-
 
 
 class SingularSessionWorker(Worker):
@@ -21,19 +19,25 @@ class SingularSessionWorker(Worker):
 		self._params = {}
 
 		super().__init__(init_params, hyperparam_spec)
+
+
+	def close(self):
+		if self.sess is not None:
+			self.sess.close()
+			self.sess = None
+
+		self.graph = None
+		self.model = None
 		
 
 
-	def setup_model(self):
-		tf.logging.info("setup_model")
-
-		if self.sess is not None:
-			self.sess.close()
+	def setup_model(self, mode="train"):
+		self.close()
 
 		self.graph = tf.Graph()
 		with self.graph.as_default():
 
-			input_fn = self.init_params["train_input_fn"](self.friendly_params)
+			input_fn = self.init_params[mode+"_input_fn"](self.friendly_params)
 			inpt = input_fn()
 
 			self.model = self.init_params["model_fn"](
@@ -43,44 +47,65 @@ class SingularSessionWorker(Worker):
 				self.friendly_params
 			)
 
-			if self.sess is None:
-				self.sess = tf.train.SingularMonitoredSession()
+			self.saver = tf.train.Saver()
+			self.checkpoint_saver = tf.train.CheckpointSaverHook(
+					checkpoint_dir=self.model_dir,
+					save_steps=self.friendly_params["micro_step"] * self.friendly_params["macro_step"],
+					saver=self.saver)
+
+			hooks = [
+				self.checkpoint_saver
+			]
+
+			if tf.summary.merge_all() is not None:
+				hooks.append(
+					tf.train.SummarySaverHook(
+						save_secs=30, 
+						output_dir=self.model_dir, 
+						summary_op=tf.summary.merge_all()
+					)
+				)
+
+			if os.path.exists(self.model_dir):
+				# We should resume from that location
+				load_dir = self.model_dir
+			else:
+				# We should try to warm start
+				load_dir = self.warm_start_dir
+
+			self.sess = tf.train.SingularMonitoredSession(
+				hooks=hooks, checkpoint_dir=load_dir
+			)
 
 
 		
 	@property
 	def params(self):  
 		return self._params;
-
-	# Experimental, plan to roll this out everywhere
-	@property
-	def friendly_params(self):
-		return Params(self.init_params, self._params)
 		
 	@params.setter
 	def params(self, value):
-
-		dirty = value != self._params
-
 		self._params = value
 
-		if dirty:
-			self.setup_model()
+
 		
 	def do_step(self, steps):
-		# We lazily initialise the estimator as during unpickling we may not have all the params
-		if self.model is None:
-			self.setup_model()
+		self.setup_model("train")
 
 		with self.graph.as_default():
 			for i in range(steps):
+				tf.logging.info("sess.run(train_op)")
 				_, loss = self.sess.run([self.model.train_op, self.model.loss])
+
+			tf.logging.info("Finished do_step({})".format(steps))
+			# self.saver.save(self.sess.raw_session(), self.model_dir)
+			self.checkpoint_saver.end(self.sess.raw_session())
 				
 	def do_eval(self):
-		if self.model is None:
-			self.setup_model()
+		self.setup_model("eval")
 
 		with self.graph.as_default():
+			# TODO: copy eval_metrics boilerplate
 			return self.sess.run({"loss":self.model.loss})
 		
 

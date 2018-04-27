@@ -249,8 +249,11 @@ class RepeatCopy(snt.AbstractModule):
   def batch_size(self):
     return self._batch_size
 
-  def _build(self):
+  def _build(self, random_seed):
     """Implements build method which adds ops to graph."""
+
+    tf.logging.info("set_random_seed {}".format(random_seed))
+    tf.set_random_seed(random_seed)
 
     # short-hand for private fields.
     min_length, max_length = self._min_length, self._max_length
