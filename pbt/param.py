@@ -26,7 +26,13 @@ class GeneticParam(object):
   
   @property
   def value(self):
-    return self.v  
+    return self.v
+
+  @property
+  def metric(self):
+    """Used for graphing hyper-parameters"""
+    return self.value
+  
 
 
 

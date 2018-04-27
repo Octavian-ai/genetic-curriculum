@@ -94,11 +94,8 @@ class SingularSessionWorker(Worker):
 
 		with self.graph.as_default():
 			for i in range(steps):
-				tf.logging.info("sess.run(train_op)")
 				_, loss = self.sess.run([self.model.train_op, self.model.loss])
 
-			tf.logging.info("Finished do_step({})".format(steps))
-			# self.saver.save(self.sess.raw_session(), self.model_dir)
 			self.checkpoint_saver.end(self.sess.raw_session())
 				
 	def do_eval(self):

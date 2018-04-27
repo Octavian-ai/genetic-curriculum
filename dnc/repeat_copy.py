@@ -252,8 +252,8 @@ class RepeatCopy(snt.AbstractModule):
   def _build(self, random_seed):
     """Implements build method which adds ops to graph."""
 
-    tf.logging.info("set_random_seed {}".format(random_seed))
-    tf.set_random_seed(random_seed)
+    if random_seed is not None:
+      tf.set_random_seed(random_seed)
 
     # short-hand for private fields.
     min_length, max_length = self._min_length, self._max_length

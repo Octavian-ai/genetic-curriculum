@@ -17,7 +17,7 @@ def get_args(args=None):
 	parser.add_argument('--macro-step', 			type=int,  default=5)
 
 	parser.add_argument('--batch-size', 			type=int,  default=16)
-	parser.add_argument('--n-workers', 				type=int,  default=30)
+	parser.add_argument('--n-workers', 				type=int,  default=10)
 	
 	parser.add_argument('--lr',						type=float, default=1e-4)
 	parser.add_argument('--max-grad-norm',			type=float, default=50)

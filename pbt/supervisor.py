@@ -11,6 +11,7 @@ import os.path
 import collections
 import sys
 import math
+import time
 
 from .param import FixedParam
 
@@ -165,7 +166,7 @@ class Supervisor(object):
 		self.workers.append(child)
 		return child
 
-	def print_status(self, epoch):
+	def print_status(self, epoch, time_taken):
 
 		measures = {
 			"score": self.score,
@@ -179,8 +180,8 @@ class Supervisor(object):
 
 			for key, val in worker.params.items():
 				if not isinstance(val, FixedParam):
-					if isinstance(val.value, int) or isinstance(val.value, float):
-						self.plot_hyper.add_result(epoch, val.value, str(i)+"_" +key)
+					if isinstance(val.metric, int) or isinstance(val.metric, float):
+						self.plot_hyper.add_result(epoch, val.metric, str(i)+"_" +key)
 
 		for key, fn in measures.items():
 			vs = [fn(i) for i in self.workers]
@@ -192,6 +193,8 @@ class Supervisor(object):
 				self.plot_progress.add_result(epoch, worst, key+"_min")
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
+		self.plot_progress.add_result(epoch, time_taken, "time_per_epoch")
+
 
 		best_worker = max(self.workers, key=self.score)
 
@@ -298,9 +301,10 @@ class Supervisor(object):
 		
 	def run(self, epochs=1000):
 		for i in range(epochs):
+			started = time.time()
 			logger.info("Epoch {}".format(i))
 			self.scale_workers(i)
 			self.step(i)
 			self.explore(i)
-			self.print_status(i)
+			self.print_status(i, time.time()-started)
 			

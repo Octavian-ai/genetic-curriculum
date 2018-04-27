@@ -31,15 +31,11 @@ class DatasetParam(GeneticParam):
 	def mutate(self, heat):
 
 		nv = {
-			k: round(v + random.randint(-1,1)*heat)
+			k: round(v + random.randint(-3,3)*heat)
 			for k, v in self.v.items()
 		}
 
 		return type(self)(nv)
-
-	@property
-	def score(self):
-		return self.v["max_length"]
 
 	@property
 	def value(self):
@@ -51,8 +47,9 @@ class DatasetParam(GeneticParam):
 	def __eq__(self, other):
 		self.v == other.v
 
-
-
+	@property
+	def metric(self):
+		return self.v["max_length"]
 
 
 
@@ -103,7 +100,7 @@ def gen_worker_init_params(args):
 def train(args):
 
 	def score(worker):
-		return -worker.results.get("loss", 0) * worker.params["dataset"].score
+		return max(100.0 - worker.results.get("loss", 0.0),0.0) * worker.params["dataset"].metric
 
 	s = Supervisor(
 		args,
