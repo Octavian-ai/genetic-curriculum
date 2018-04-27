@@ -13,7 +13,7 @@ def get_args(args=None):
 	parser.add_argument('--gcs-dir',				type=str,  default=None)
 
 	parser.add_argument('--epochs', 				type=int,  default=1000)
-	parser.add_argument('--micro-step', 			type=int,  default=500)
+	parser.add_argument('--micro-step', 			type=int,  default=5000)
 	parser.add_argument('--macro-step', 			type=int,  default=1)
 
 	parser.add_argument('--batch-size', 			type=int,  default=16)

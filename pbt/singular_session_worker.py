@@ -110,10 +110,15 @@ class SingularSessionWorker(Worker):
 		self.setup_model("eval")
 
 		with self.graph.as_default():
-			# TODO: copy eval_metrics boilerplate
-			return self.sess.run({"loss":self.model.loss})
+			for i in range(self.init_params["eval_steps"]):
+				r = self.sess.run(self.model.eval_metric_ops)
 
 		self.close()
+
+		return {
+			k: v[0]
+			for k, v in r.items()
+		}
 		
 
 

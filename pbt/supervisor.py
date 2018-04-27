@@ -169,10 +169,12 @@ class Supervisor(object):
 	def print_status(self, epoch, time_taken):
 
 		measures = {
-			"score": self.score,
-			"loss": lambda i: i.results.get('loss', -1),
-			# "train": lambda i: i.results.get('train_acc', -1)
+			"score": self.score
 		}
+
+		if len(self.workers) > 0 and self.workers[0].results is not None:
+			for key in self.workers[0].results.keys():
+				measures[key] = lambda i: i.results.get(key, -1)
 		
 		for i, worker in enumerate(self.workers):
 			for key, fn in measures.items():

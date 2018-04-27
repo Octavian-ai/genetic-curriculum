@@ -67,7 +67,10 @@ def model_fn(features, labels, mode, params):
 	# dataset_string = dataset.to_human_readable(dataset_tensors_np, output_np)
 
 	eval_metric_ops = {
-		# "accuracy": tf.metrics.accuracy(pred_review_score, label_review_score),
+		"accuracy": tf.metrics.accuracy(
+			output_logits * tf.expand_dims(labels["mask"],-1), 
+			labels["target"]),
+		"loss": tf.metrics.mean(train_loss),
 	}
 
 
