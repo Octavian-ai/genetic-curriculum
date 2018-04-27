@@ -52,7 +52,7 @@ class WorkerTestCase(unittest.TestCase):
 		logger.info("-------------- NOW TRANSFER PARAMS 1 --------------")
 
 		worker2 = self.vend_worker()
-		worker2.params = worker1.explore(1.0)
+		worker2.params = worker1.explore(0.0)
 		worker2.eval()
 
 		self.assertEqual(worker1.results, worker2.results, "Results should be equal after param explore copy")
