@@ -30,6 +30,7 @@ REQUIRED_PACKAGES = [
 	'google-cloud',
 	'urllib3',
 	'Matplotlib>=2.1',
+	'dm-sonnet',
 ]
 
 setup(
