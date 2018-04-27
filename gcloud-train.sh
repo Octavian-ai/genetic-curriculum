@@ -1,6 +1,6 @@
 
 USER="dmack"
-JOB_NAME="article1_$(date +%Y%m%d_%H%M%S)"
+JOB_NAME="genetic_curriculum_$(date +%Y%m%d_%H%M%S)"
 BUCKET_NAME="octavian-training"
 REGION="us-central1"
 GCS_PATH="${BUCKET_NAME}/${JOB_NAME}"

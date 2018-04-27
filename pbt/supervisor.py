@@ -170,13 +170,13 @@ class Supervisor(object):
 
 		measures = {
 			"score": self.score,
-			# "validation": lambda i: i.results.get('accuracy', -1),
+			"loss": lambda i: i.results.get('loss', -1),
 			# "train": lambda i: i.results.get('train_acc', -1)
 		}
 		
 		for i, worker in enumerate(self.workers):
 			for key, fn in measures.items():
-				self.plot_workers.add_result(epoch, fn(worker),  str(i)+key, "s", '-')
+				self.plot_workers.add_result(epoch, fn(worker),  str(i)+_+key, "s", '-')
 
 			for key, val in worker.params.items():
 				if not isinstance(val, FixedParam):
@@ -199,8 +199,9 @@ class Supervisor(object):
 		best_worker = max(self.workers, key=self.score)
 
 		for key, val in best_worker.params.items():
-			if isinstance(val.value, int) or isinstance(val.value, float):
-				self.plot_progress.add_result(epoch, val.value, key+"_best")
+			if not isinstance(val, FixedParam):
+				if isinstance(val.metric, int) or isinstance(val.metric, float):
+					self.plot_progress.add_result(epoch, val.metric, key+"_best")
 
 		self.plot_progress.write()
 		self.plot_workers.write()
