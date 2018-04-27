@@ -10,6 +10,7 @@ from .param import *
 from .params import *
 
 
+
 class SingularSessionWorker(Worker):
 	
 	def __init__(self, init_params, hyperparam_spec):
@@ -47,15 +48,20 @@ class SingularSessionWorker(Worker):
 				self.friendly_params
 			)
 
-			self.saver = tf.train.Saver()
-			self.checkpoint_saver = tf.train.CheckpointSaverHook(
-					checkpoint_dir=self.model_dir,
-					save_steps=self.friendly_params["micro_step"] * self.friendly_params["macro_step"],
-					saver=self.saver)
+			self.model_mode = mode
 
 			hooks = [
-				self.checkpoint_saver
 			]
+
+			if mode == "train":
+				self.saver = tf.train.Saver()
+				self.checkpoint_saver = tf.train.CheckpointSaverHook(
+						checkpoint_dir=self.model_dir,
+						save_steps=self.friendly_params["micro_step"],
+						saver=self.saver)
+
+				hooks.append(self.checkpoint_saver)
+
 
 			if tf.summary.merge_all() is not None:
 				hooks.append(
@@ -96,7 +102,9 @@ class SingularSessionWorker(Worker):
 			for i in range(steps):
 				_, loss = self.sess.run([self.model.train_op, self.model.loss])
 
-			self.checkpoint_saver.end(self.sess.raw_session())
+			# self.checkpoint_saver.end(self.sess.raw_session())
+
+		self.close()
 				
 	def do_eval(self):
 		self.setup_model("eval")
@@ -104,6 +112,8 @@ class SingularSessionWorker(Worker):
 		with self.graph.as_default():
 			# TODO: copy eval_metrics boilerplate
 			return self.sess.run({"loss":self.model.loss})
+
+		self.close()
 		
 
 

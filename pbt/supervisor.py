@@ -176,12 +176,12 @@ class Supervisor(object):
 		
 		for i, worker in enumerate(self.workers):
 			for key, fn in measures.items():
-				self.plot_workers.add_result(epoch, fn(worker),  str(i)+_+key, "s", '-')
+				self.plot_workers.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '-')
 
 			for key, val in worker.params.items():
 				if not isinstance(val, FixedParam):
 					if isinstance(val.metric, int) or isinstance(val.metric, float):
-						self.plot_hyper.add_result(epoch, val.metric, str(i)+"_" +key)
+						self.plot_hyper.add_result(epoch, val.metric, str(i)+"_"+key)
 
 		for key, fn in measures.items():
 			vs = [fn(i) for i in self.workers]
@@ -228,8 +228,9 @@ class Supervisor(object):
 				steps = i.params.get("micro_step", FP(1)).value
 				logger.info("{}.train({})".format(i.id, steps))
 				i.step(steps)
-				i.eval()
 				logger.info("{}.eval()".format(i.id))
+				i.eval()
+				
 			except Exception:
 				traceback.print_exc()
 				self._remove_worker(i, epoch)
