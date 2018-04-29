@@ -14,6 +14,6 @@ class Params(object):
 		if key in self.fixed:
 			return self.fixed[key]
 
-		logger.warn("Available keys:", self.fixed.keys(), self.dynamic.keys())
+		logger.warn("Available keys: {} {}".format(self.fixed.keys(), self.dynamic.keys()))
 
 		raise KeyError(key)

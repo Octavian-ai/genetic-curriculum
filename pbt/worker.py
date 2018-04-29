@@ -30,6 +30,25 @@ class Worker(object):
 		self.init_params = init_params
 		self.gen_params(hyperparam_spec)
 
+	
+	# --------------------------------------------------------------------------
+	# Implement these
+	# --------------------------------------------------------------------------
+
+	def do_step(self, steps):
+		"""Execute a training step. Returns nothing."""
+		pass
+
+	def do_eval(self):
+		"""Returns evaluation results as a dict"""
+		pass
+
+
+
+	# --------------------------------------------------------------------------
+	# Methods 
+	# --------------------------------------------------------------------------
+
 	def gen_params(self, hyperparam_spec):
 		self.params = {
 			k: v() for k, v in hyperparam_spec.items()
@@ -37,11 +56,12 @@ class Worker(object):
 
 	@property
 	def params(self):
-		pass
+		return self._params
 	
 	@params.setter
 	def params(self, params):
-		pass
+		self._params = params
+
 
 	# Experimental, plan to roll this out everywhere to replace params
 	@property
@@ -75,15 +95,10 @@ class Worker(object):
 		self.total_count += steps
 		self.do_step(steps)
 	
-	def do_step(self, steps):
-		pass
  
 	def eval(self):
 		self.results = self.do_eval()
 		return self.results
-	
-	def do_eval(self):
-		pass
 
 	def is_ready(self):
 		mi = self.friendly_params["micro_step"]

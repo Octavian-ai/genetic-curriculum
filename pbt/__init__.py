@@ -6,4 +6,5 @@ from .schedule import *
 from .estimator_worker import EstimatorWorker, gen_scaffold
 from .singular_session_worker import SingularSessionWorker
 
-from .worker_test import WorkerAbstractTestCase
+from .worker_test import WorkerTestCase
+from .supervisor_test import SupervisorTestCase

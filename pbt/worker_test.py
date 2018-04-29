@@ -5,25 +5,25 @@ import os.path
 import sys
 import pathlib
 
-from src import *
-
 import logging
 logger = logging.getLogger(__name__)
 
-output_dir = "./output_test"
+output_dir = "./output_test/worker_test"
 
-class WorkerAbstractTestCase(unittest.TestCase):
+from .mock import *
+
+class WorkerTestCase(unittest.TestCase):
+	"""This test case is designed so you can easily use it to test worker implementations"""
 
 	# --------------------------------------------------------------------------
-	# Implement these
+	# Implement these to use this test
 	# --------------------------------------------------------------------------
-	
 
 	def vend_worker(self):
-		pass
+		return MockWorker()
 
 	def load_worker(self, file_path):
-		pass
+		return MockWorker.load(file_path, {})
 	
 
 

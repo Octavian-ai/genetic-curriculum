@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 FP = collections.namedtuple('FallbackParam', ['value'])
-
 		
 		
 class Supervisor(object):
@@ -74,6 +73,10 @@ class Supervisor(object):
 		self.save_counter = save_freq
 		self.heat = 1.0
 
+		assert "micro_step" in hyperparam_spec, "Hyperparameters must include micro_step"
+		assert "macro_step" in hyperparam_spec, "Hyperparameters must include macro_step"
+
+
 		# Function or Integer supported
 		if isinstance(n_workers, int) or isinstance(n_workers, float):
 			self.n_workers = lambda step: round(n_workers)
@@ -95,9 +98,9 @@ class Supervisor(object):
 		except:
 			pass
 
-		existing_pop = os.path.join(self.args.input_dir, "population/worker_*.pkl")
+		existing_pop = os.path.join(self.args.output_dir, "population/worker_*.pkl")
 		for i in glob(existing_pop):
-			os.unlink(file_path)
+			os.unlink(i)
 
 		for worker in self.workers:
 			worker.save(os.path.join(p, "worker_{}.pkl".format(worker.id)))
@@ -219,6 +222,14 @@ class Supervisor(object):
 			if v != p2[k]:
 				return False
 		return True
+
+	def __len__(self):
+		return len(self.workers)
+
+	@property
+	def best_worker(self):
+		return max(self.workers, key=self.score)
+	
 
 	def _remove_worker(self, worker, epoch):
 		self.workers.remove(worker)
