@@ -4,6 +4,7 @@ import numpy as np
 
 import traceback
 import os.path
+import time
 
 from .worker import Worker
 from .param import *
@@ -99,8 +100,13 @@ class SingularSessionWorker(Worker):
 		self.setup_model("train")
 
 		with self.graph.as_default():
+			started = time.time()
 			for i in range(steps):
 				_, loss = self.sess.run([self.model.train_op, self.model.loss])
+
+			time_taken = time.time() - started
+
+			tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
 
 			# self.checkpoint_saver.end(self.sess.raw_session())
 

@@ -111,6 +111,7 @@ def train(args):
 		score=score,
 		n_workers=args.n_workers)
 
+	s.load()
 	s.run(args.epochs)
 
 

@@ -1,3 +1,3 @@
 
-from .train import train
+from .train import train, DatasetParam
 from .args import get_args

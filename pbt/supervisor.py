@@ -95,14 +95,19 @@ class Supervisor(object):
 		except:
 			pass
 
-		# TODO: delete workers
+		existing_pop = os.path.join(self.args.input_dir, "population/worker_*.pkl")
+		for i in glob(existing_pop):
+			os.unlink(file_path)
 
 		for worker in self.workers:
 			worker.save(os.path.join(p, "worker_{}.pkl".format(worker.id)))
 
 		logger.info("Saved workers")
 
-	def load(self, input_dir):
+	def load(self, input_dir=None):
+		if input_dir is None:
+			input_dir = self.args.output_dir
+
 		pop_dir = os.path.join(input_dir, "population/worker_*.pkl")
 		logger.info("Trying to load workers from " + pop_dir)
 
@@ -143,9 +148,6 @@ class Supervisor(object):
 
 	def add_random_worker(self):
 		additional = self.SubjectClass(self.init_params, self.hyperparam_spec)
-		additional.count = random.randint(0,
-			round(additional.params.get('macro_step', FP(5)).value * 0.2)
-		)
 		self.workers.append(additional)
 
 	def breed_worker(self, worker):
@@ -241,16 +243,53 @@ class Supervisor(object):
 		if len(self.workers) == 0:
 			raise Exception("All workers failed, your model has bugs")
 
+	def maybe_save(self, epoch):
 		self.save_counter -= 1;
 		if self.save_counter <= 0:
 			self.save()
 			self.save_counter = self.save_freq
 
-	def exploit(self, worker):
+	# def exploit(self, worker):
+	# 	# Edge case: never exploit
+	# 	if len(self.workers) == 1:
+	# 		return None
+
+	# 	stack = list(self.workers)
+	# 	random.shuffle(stack) # Tie-break randomly
+	# 	stack = sorted(stack, key=self.score)
 		
-		# Edge case: never exploit
-		if len(self.workers) == 1:
-			return None
+	# 	n20 = max(math.ceil(len(stack)*0.2), 1)
+	# 	top20 = stack[-n20:]
+	# 	bottom20 = stack[:n20]
+		
+	# 	if worker in bottom20:
+	# 		mentor = random.choice(top20)
+	# 		return mentor
+	# 	else:
+	# 		return None
+
+	# def explore(self, epoch):
+	# 	for i in self.workers:
+	# 		if i.is_ready():
+
+	# 			logger.info("{} is ready, attempting exploit".format(i.id))
+				
+	# 			i.reset_count()
+	# 			better = self.exploit(i)
+
+	# 			if better is not None:
+	# 				if not self.params_equal(i.params, better.params):
+	# 					logger.info("{} replace with mutated {}".format(i.id, better.id))
+	# 					i.params = better.explore(self.heat)
+
+	# 					try:
+	# 						i.eval()
+	# 					except Exception:
+	# 						traceback.print_exc()
+	# 						self._remove_worker(i, epoch)
+	# 						continue
+
+	def exploit(self, epoch):
 
 		stack = list(self.workers)
 		random.shuffle(stack) # Tie-break randomly
@@ -259,33 +298,22 @@ class Supervisor(object):
 		n20 = max(math.ceil(len(stack)*0.2), 1)
 		top20 = stack[-n20:]
 		bottom20 = stack[:n20]
-		
-		if worker in bottom20:
-			mentor = random.choice(top20)
-			return mentor
-		else:
-			return None
 
-	def explore(self, epoch):
-		for i in self.workers:
+		for i in bottom20:
 			if i.is_ready():
 
-				logger.info("{} is ready, attempting exploit".format(i.id))
-				
-				i.reset_count()
-				better = self.exploit(i)
+				mentor = random.choice(top20)
+				logger.info("{} replace with mutated {}".format(i.id, mentor.id))
+				i.params = mentor.explore(self.heat)
 
-				if better is not None:
-					if not self.params_equal(i.params, better.params):
-						logger.info("{} replace with mutated {}".format(i.id, better.id))
-						i.params = better.explore(self.heat)
+				try:
+					i.eval()
+				except Exception:
+					traceback.print_exc()
+					self._remove_worker(i, epoch)
+					continue
 
-						try:
-							i.eval()
-						except Exception:
-							traceback.print_exc()
-							self._remove_worker(i, epoch)
-							continue
+
 
 	def breed(self, epoch):
 		for i in self.workers:
@@ -309,6 +337,7 @@ class Supervisor(object):
 			logger.info("Epoch {}".format(i))
 			self.scale_workers(i)
 			self.step(i)
-			self.explore(i)
+			self.exploit(i)
 			self.print_status(i, time.time()-started)
+			self.maybe_save(i)
 			
