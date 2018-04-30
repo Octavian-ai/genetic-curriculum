@@ -66,12 +66,36 @@ def model_fn(features, labels, mode, params):
 	# dataset_tensors_np, output_np = sess.run([dataset_tensors, output])
 	# dataset_string = dataset.to_human_readable(dataset_tensors_np, output_np)
 
+	masked_ouput = tf.nn.sigmoid(output_logits) * tf.expand_dims(labels["mask"],-1)
+	delta = tf.abs(masked_ouput - labels["target"])
+	tf.summary.histogram("delta", delta)
+	equality = tf.cast(delta < 0.1, tf.float32)
+
 	eval_metric_ops = {
-		"accuracy": tf.metrics.accuracy(
-			output_logits * tf.expand_dims(labels["mask"],-1), 
+		"accuracy_inbuilt": tf.metrics.accuracy(
+			masked_ouput, 
 			labels["target"]),
+		"accuracy": tf.metrics.mean(equality),
 		"loss": tf.metrics.mean(train_loss),
 	}
+
+	image_mask = tf.expand_dims(tf.expand_dims(labels["mask"],-1),-1)
+	
+	xent = tf.expand_dims(
+		tf.nn.sigmoid_cross_entropy_with_logits(labels=labels["target"], logits=output_logits * tf.expand_dims(labels["mask"],-1)), -1)
+	
+	image = tf.concat([
+		tf.expand_dims(masked_ouput, -1), 
+		tf.expand_dims(labels["target"], -1),
+		tf.expand_dims(equality, -1),
+		xent / tf.reduce_max(xent)
+	], -2)
+	tf.summary.image("output_compare", image,32)
+
+
+	tf.summary.scalar("train_accuracy", tf.reduce_mean(equality))
+	tf.summary.scalar("train_loss", tf.reduce_mean(train_loss))
+
 
 
 	return tf.estimator.EstimatorSpec(

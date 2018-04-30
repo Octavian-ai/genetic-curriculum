@@ -109,7 +109,8 @@ def train(args):
 		gen_worker_init_params(args), 
 		gen_param_spec(args), 
 		score=score,
-		n_workers=args.n_workers)
+		n_workers=args.n_workers,
+		heat=args.heat)
 
 	s.load()
 	s.run(args.epochs)

@@ -67,7 +67,7 @@ class SingularSessionWorker(Worker):
 			if tf.summary.merge_all() is not None:
 				hooks.append(
 					tf.train.SummarySaverHook(
-						save_secs=30, 
+						save_secs=10, 
 						output_dir=self.model_dir, 
 						summary_op=tf.summary.merge_all()
 					)

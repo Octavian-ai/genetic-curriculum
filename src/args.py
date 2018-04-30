@@ -22,6 +22,7 @@ def get_args(args=None):
 	parser.add_argument('--lr',						type=float, default=1e-4)
 	parser.add_argument('--max-grad-norm',			type=float, default=50)
 	parser.add_argument('--optimizer-epsilon',		type=float, default=1e-10)
+	parser.add_argument('--heat',					type=float, default=1.0)
 
 
 	return parser.parse_args(args)

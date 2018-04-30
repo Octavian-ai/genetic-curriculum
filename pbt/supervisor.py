@@ -62,6 +62,7 @@ class Supervisor(object):
 				 score,
 				 n_workers=10, 
 				 save_freq=20,
+				 heat=1.0
 				 ):
 
 		self.args = args
@@ -69,9 +70,10 @@ class Supervisor(object):
 		self.init_params = init_params
 		self.hyperparam_spec = hyperparam_spec
 		self.score = score
+		self.heat = heat
 		self.save_freq = save_freq
 		self.save_counter = save_freq
-		self.heat = 1.0
+		
 
 		assert "micro_step" in hyperparam_spec, "Hyperparameters must include micro_step"
 		assert "macro_step" in hyperparam_spec, "Hyperparameters must include macro_step"

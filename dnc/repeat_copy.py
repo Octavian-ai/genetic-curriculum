@@ -249,7 +249,7 @@ class RepeatCopy(snt.AbstractModule):
   def batch_size(self):
     return self._batch_size
 
-  def _build(self, random_seed):
+  def _build(self, random_seed=None):
     """Implements build method which adds ops to graph."""
 
     if random_seed is not None:
