@@ -35,11 +35,19 @@ class GeneticParam(object):
   
 
 
+class InitableParam(GeneticParam):
+    def __init__(self,v=None):
+        self.v = v
 
-class FixedParam(GeneticParam):
+class NaturalNumbersParam(GeneticParam):
   def __init__(self,v=None):
-    self.v = v
-    
+    self.v = 1.0 if v is None else v
+
+  def mutate(self, heat=1.0):
+    return type(self).__init__(self.v + 1.0)
+
+
+class FixedParam(InitableParam):    
   def mutate(self, heat=1.0):
     return self
 
@@ -50,9 +58,7 @@ def FixedParamOf(v):
   return lambda: FixedParam(v)
 
 
-class InitableParam(GeneticParam):
-    def __init__(self,v=None):
-        self.v = v
+
 
 
     

@@ -31,7 +31,7 @@ class DatasetParam(GeneticParam):
 	def mutate(self, heat):
 
 		nv = {
-			k: max(round(v + random.randint(-3,3)*heat),1)
+			k: v + 1.0 #max(round(v + random.randint(-3,3)*heat),1)
 			for k, v in self.v.items()
 		}
 
@@ -39,7 +39,7 @@ class DatasetParam(GeneticParam):
 
 	@property
 	def value(self):
-		return repeat_copy.RepeatCopy(4, 16, 1, self.v["max_length"], 1, 2)
+		return repeat_copy.RepeatCopy(4, 16, 1, round(self.v["max_length"]), 1, 2)
 
 	def __str__(self):
 		return str(self.v)

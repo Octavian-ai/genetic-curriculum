@@ -104,7 +104,7 @@ class Worker(object):
 		mi = self.friendly_params["micro_step"]
 		ma = self.friendly_params["macro_step"]
 
-		return self.current_count > mi * ma
+		return self.current_count >= mi * ma
 
 	def explore(self, heat):
 		return {
