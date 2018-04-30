@@ -23,6 +23,11 @@ class WorkerTestCase(pbt.WorkerTestCase):
 		init_params = gen_worker_init_params(args)
 		return pbt.SingularSessionWorker.load(file_path, init_params)
 
+	@property
+	def steps(self):
+		return 2000
+	
+
 
 	def assertDatasetEqual(self, first, second, msg):
 		self.assertEqual(first.v, second.v, msg)

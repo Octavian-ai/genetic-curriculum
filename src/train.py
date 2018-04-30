@@ -31,7 +31,7 @@ class DatasetParam(GeneticParam):
 	def mutate(self, heat):
 
 		nv = {
-			k: v + 1.0 #max(round(v + random.randint(-3,3)*heat),1)
+			k: v + max(round(v + random.randint(-3,3)*heat),1)
 			for k, v in self.v.items()
 		}
 

@@ -24,6 +24,11 @@ class WorkerTestCase(unittest.TestCase):
 
 	def load_worker(self, file_path):
 		return MockWorker.load(file_path, {})
+
+	@property
+	def steps(self):
+		return 1
+	
 	
 
 
@@ -65,7 +70,7 @@ class WorkerTestCase(unittest.TestCase):
 			pass
 
 		worker1 = self.vend_worker()
-		worker1.step(20)
+		worker1.step(self.steps)
 		worker1.eval()
 		worker1.save(file_path)
 		worker2 = self.load_worker(file_path)
@@ -81,7 +86,7 @@ class WorkerTestCase(unittest.TestCase):
 
 	def test_param_copy(self):
 		worker1 = self.vend_worker()
-		worker1.step(1)
+		worker1.step(self.steps)
 		worker1.eval()
 
 		logger.info("-------------- NOW TRANSFER PARAMS 1 --------------")
@@ -106,7 +111,7 @@ class WorkerTestCase(unittest.TestCase):
 		worker = self.vend_worker()
 
 		for i in range(10):
-			worker.step(1)
+			worker.step(self.steps)
 			worker.eval()
 			worker.params = worker.explore(1.0)
 
