@@ -184,8 +184,11 @@ class Supervisor(object):
 				measures[key] = lambda i: i.results.get(key, -1)
 		
 		for i, worker in enumerate(self.workers):
+
+			self.plot_workers.add_result(epoch, self.score(worker),  str(i)+"_score")
+
 			for key, fn in measures.items():
-				self.plot_workers.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '-')
+				self.plot_hyper.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '--')
 
 			for key, val in worker.params.items():
 				if not isinstance(val, FixedParam):

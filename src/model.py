@@ -77,6 +77,7 @@ def model_fn(features, labels, mode, params):
 			labels["target"]),
 		"accuracy": tf.metrics.mean(equality),
 		"loss": tf.metrics.mean(train_loss),
+		"correct_elements": tf.metrics.mean(tf.reduce_sum(equality, [0,2]))
 	}
 
 	image_mask = tf.expand_dims(tf.expand_dims(labels["mask"],-1),-1)
@@ -95,6 +96,10 @@ def model_fn(features, labels, mode, params):
 
 	tf.summary.scalar("train_accuracy", tf.reduce_mean(equality))
 	tf.summary.scalar("train_loss", tf.reduce_mean(train_loss))
+	tf.summary.scalar("correct_elements", tf.reduce_mean(tf.reduce_sum(equality, [0,2])))
+	tf.summary.histogram("length", labels["length"])
+	tf.summary.scalar("length", tf.reduce_mean(labels["length"]))
+
 
 
 

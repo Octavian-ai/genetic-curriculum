@@ -10,31 +10,13 @@ from .worker import Worker
 from .param import *
 from .params import *
 
+class ModelSession(object):
+	def __init__(self, init_params, friendly_params, model_dir, warm_start_dir, mode):
 
-
-class SingularSessionWorker(Worker):
-	
-	def __init__(self, init_params, hyperparam_spec):
-		self.model = None
-		self.graph = None
-		self.sess = None
-		self._params = {}
-
-		super().__init__(init_params, hyperparam_spec)
-
-
-	def close(self):
-		if self.sess is not None:
-			self.sess.close()
-			self.sess = None
-
-		self.graph = None
-		self.model = None
-		
-
-
-	def setup_model(self, mode="train"):
-		self.close()
+		self.init_params = init_params
+		self.friendly_params = friendly_params
+		self.model_dir = model_dir
+		self.warm_start_dir = warm_start_dir
 
 		self.graph = tf.Graph()
 		with self.graph.as_default():
@@ -63,6 +45,10 @@ class SingularSessionWorker(Worker):
 
 				hooks.append(self.checkpoint_saver)
 
+			if self.init_params.get('profile', False):
+				profiler = tf.train.ProfilerHook(save_steps=100, output_dir=self.model_dir)
+				hooks.append(profiler)
+
 
 			if tf.summary.merge_all() is not None:
 				hooks.append(
@@ -84,6 +70,47 @@ class SingularSessionWorker(Worker):
 				hooks=hooks, checkpoint_dir=load_dir
 			)
 
+	def run(self, ops):
+		with self.graph.as_default():
+			return self.sess.run(ops)
+
+	def close(self):
+		if self.sess is not None:
+			self.sess.close()
+			self.sess = None
+
+		self.graph = None
+		self.model = None
+
+class SingularSessionWorker(Worker):
+	
+	def __init__(self, init_params, hyperparam_spec):
+		self.model = None
+		self.graph = None
+		self.sess = None
+		self._params = {}
+
+		super().__init__(init_params, hyperparam_spec)
+
+
+	def close(self):
+		if self.sess is not None:
+			self.sess.close()
+			self.sess = None
+
+		self.graph = None
+		self.model = None
+		
+
+
+	def get_model_session(self, mode="train"):
+		return ModelSession(
+			self.init_params,
+			self.friendly_params,
+			self.model_dir,
+			self.warm_start_dir,
+			mode
+		)
 
 		
 	@property
@@ -97,29 +124,25 @@ class SingularSessionWorker(Worker):
 
 		
 	def do_step(self, steps):
-		self.setup_model("train")
+		sm = self.get_model_session("train")
 
-		with self.graph.as_default():
-			started = time.time()
-			for i in range(steps):
-				_, loss = self.sess.run([self.model.train_op, self.model.loss])
+		started = time.time()
+		for i in range(steps):
+			_, loss = sm.run([sm.model.train_op, sm.model.loss])
 
-			time_taken = time.time() - started
+		time_taken = time.time() - started
 
-			tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
+		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
 
-			# self.checkpoint_saver.end(self.sess.raw_session())
-
-		self.close()
+		sm.close()
 				
 	def do_eval(self):
-		self.setup_model("eval")
+		sm = self.get_model_session("eval")
 
-		with self.graph.as_default():
-			for i in range(self.init_params["eval_steps"]):
-				r = self.sess.run(self.model.eval_metric_ops)
+		for i in range(self.init_params["eval_steps"]):
+			r = sm.run(sm.model.eval_metric_ops)
 
-		self.close()
+		sm.close()
 
 		return {
 			k: v[0]

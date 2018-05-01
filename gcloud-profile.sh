@@ -1,6 +1,6 @@
 
 USER="dmack"
-JOB_NAME="genetic_curriculum_$(date +%Y%m%d_%H%M%S)"
+JOB_NAME="genetic_curriculum_profile_$(date +%Y%m%d_%H%M%S)"
 BUCKET_NAME="octavian-training"
 REGION="us-central1"
 GCS_PATH="${BUCKET_NAME}/${JOB_NAME}"
@@ -14,9 +14,16 @@ gcloud ml-engine jobs submit training "$JOB_NAME" \
     --region "$REGION" \
     --runtime-version=1.6 \
     --python-version=3.5 \
-    --config "./gcloud-config-large.json" \
+    --scale-tier "BASIC_GPU" \
+    # --config "./gcloud-config-large.json" \
     -- \
     --output-dir "./output" \
     --gcs-dir "$JOB_NAME" \
     --bucket "$BUCKET_NAME" \
-    --model-dir "gs://${BUCKET_NAME}/${JOB_NAME}/checkpoint"
+    --model-dir "gs://${BUCKET_NAME}/${JOB_NAME}/checkpoint" \
+    --n-workers 1 \
+    --epochs 1 \
+    --micro-step 2000 \
+    --macro-step 1 \
+    --batch-size 64 \
+    --profile 

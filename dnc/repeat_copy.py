@@ -22,8 +22,12 @@ import numpy as np
 import sonnet as snt
 import tensorflow as tf
 
-DatasetTensors = collections.namedtuple('DatasetTensors', ('observations',
-                                                           'target', 'mask'))
+DatasetTensors = collections.namedtuple('DatasetTensors', (
+  'observations',
+  'target', 
+  'mask',
+  'length'
+))
 
 
 def masked_sigmoid_cross_entropy(logits,
@@ -377,7 +381,7 @@ class RepeatCopy(snt.AbstractModule):
     targ = tf.reshape(tf.concat(targ_tensors, 1), targ_batch_shape)
     mask = tf.transpose(
         tf.reshape(tf.concat(mask_tensors, 0), mask_batch_trans_shape))
-    return DatasetTensors(obs, targ, mask)
+    return DatasetTensors(obs, targ, mask, total_length_batch)
 
   def cost(self, logits, targ, mask):
     return masked_sigmoid_cross_entropy(

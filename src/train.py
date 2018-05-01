@@ -19,27 +19,46 @@ from dnc import *
 
 class DatasetParam(GeneticParam):
 
-	def __init__(self, v=None):
+	def __init__(self, batch_size, v=None):
 
+		self.batch_size = batch_size
 		self.v = v
 
 		if self.v is None:
 			self.v = {
-				"max_length": 1
+				"min_length": 1,
+				"max_length": 3,
+				"min_repeats": 1,
+				"max_repeats": 3,
 			}
 
 	def mutate(self, heat):
 
 		nv = {
-			k: v + max(round(v + random.randint(-3,3)*heat),1)
+			k: v + (random.paretovariate(3.0) * heat * random.choice([-1.0,1.0]))
 			for k, v in self.v.items()
 		}
 
-		return type(self)(nv)
+		return type(self)(self.batch_size, nv)
+
+	def _get_var(self, metric, fn):
+
+		def s(k):
+			return round(max(self.v[k], 1))
+
+		return fn(s("min_"+metric),s("max_"+metric))
+
 
 	@property
 	def value(self):
-		return repeat_copy.RepeatCopy(4, 16, 1, round(self.v["max_length"]), 1, 2)
+		return repeat_copy.RepeatCopy(
+			num_bits=4, 
+			batch_size=self.batch_size, 
+			min_length =self._get_var("length",  min),
+			max_length =self._get_var("length",  max),
+			min_repeats=self._get_var("repeats", min),
+			max_repeats=self._get_var("repeats", max),
+		)
 
 	def __str__(self):
 		return str(self.v)
@@ -49,9 +68,13 @@ class DatasetParam(GeneticParam):
 
 	@property
 	def metric(self):
-		return self.v["max_length"]
+		return self._get_var("length", max) * self._get_var("repeats", max)
 
 
+def DatasetParamOf(batch_size):
+	def m(v=None):
+		return DatasetParam(batch_size, v)
+	return m
 
 def gen_param_spec(args):
 
@@ -61,7 +84,7 @@ def gen_param_spec(args):
 
 		"heritage": Heritage,
 		"model_id": ModelId,
-		"dataset": DatasetParam,
+		"dataset": DatasetParamOf(args.batch_size),
 	}
 
 def gen_input_fn(is_eval=False):
@@ -75,6 +98,7 @@ def gen_input_fn(is_eval=False):
 				{
 					"target": dataset_tensors.target,
 					"mask": dataset_tensors.mask,
+					"length": dataset_tensors.length,
 				}
 			)
 
@@ -101,7 +125,7 @@ def gen_worker_init_params(args):
 def train(args):
 
 	def score(worker):
-		return worker.results["accuracy"] * 100 * worker.params["dataset"].metric
+		return worker.results["correct_elements"]
 
 	s = Supervisor(
 		args,
