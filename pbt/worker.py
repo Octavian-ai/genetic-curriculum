@@ -9,6 +9,7 @@ import collections
 import logging
 import sys
 import math
+import time
 
 from .params import Params
 
@@ -28,6 +29,8 @@ class Worker(object):
 		self.id = uuid.uuid1()
 		self.results = {}
 		self.init_params = init_params
+		self.running = False
+		self.time_per_step = None
 		self.gen_params(hyperparam_spec)
 
 	
@@ -94,8 +97,27 @@ class Worker(object):
 		self.current_count += steps
 		self.total_count += steps
 		self.do_step(steps)
+
+
+	# --------------------------------------------------------------------------
+	# For multi-process sync
+	#
 	
+	def record_start(self):
+		self.running = True
+		self.start_time = time.time()
+
+	def record_finish(self, steps, results):
+		self.current_count += steps
+		self.total_count += steps
+		self.results = results
+		self.time_per_step = float(time.time() - self.start_time) / float(steps)
+		self.running = False
+
+	# 
+	# --------------------------------------------------------------------------
  
+
 	def eval(self):
 		self.results = self.do_eval()
 		return self.results

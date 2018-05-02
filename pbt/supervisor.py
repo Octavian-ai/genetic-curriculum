@@ -1,5 +1,6 @@
 
 import tensorflow as tf
+import numpy as np
 import random
 import pickle
 import pathlib
@@ -12,6 +13,9 @@ import collections
 import sys
 import math
 import time
+import signal
+import queue as libqueue
+from multiprocessing import Pool, Queue
 
 from .param import FixedParam
 
@@ -22,8 +26,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 FP = collections.namedtuple('FallbackParam', ['value'])
-		
-		
+
+
+
 class Supervisor(object):
 	"""
 		Implementation of Population Based Training. 
@@ -73,7 +78,8 @@ class Supervisor(object):
 		self.heat = heat
 		self.save_freq = save_freq
 		self.save_counter = save_freq
-		
+		self.result_queue = Queue()
+		self.children = []
 
 		assert "micro_step" in hyperparam_spec, "Hyperparameters must include micro_step"
 		assert "macro_step" in hyperparam_spec, "Hyperparameters must include macro_step"
@@ -173,7 +179,7 @@ class Supervisor(object):
 		self.workers.append(child)
 		return child
 
-	def print_status(self, epoch, time_taken):
+	def print_status(self, epoch):
 
 		measures = {
 			"score": self.score
@@ -205,8 +211,9 @@ class Supervisor(object):
 				self.plot_progress.add_result(epoch, worst, key+"_min")
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
-		self.plot_progress.add_result(epoch, time_taken, "time_per_epoch")
 
+		time_per_step = [i.time_per_step for i in self.workers if i.time_per_step is not None]
+		self.plot_progress.add_result(epoch, np.mean(time_per_step), "time_per_step")
 
 		best_worker = max(self.workers, key=self.score)
 
@@ -242,7 +249,7 @@ class Supervisor(object):
 		self.plot_progress.add_result(epoch, self.fail_count, "failed_workers")
 
 
-	def step(self, epoch):
+	def step_singlethreaded(self, epoch):
 		for i in self.workers:
 			try:
 				steps = i.params.get("micro_step", FP(1)).value
@@ -259,51 +266,86 @@ class Supervisor(object):
 		if len(self.workers) == 0:
 			raise Exception("All workers failed, your model has bugs")
 
+	def step_multithreaded(self, epoch):
+
+		# --------------------------------------------------------------------------
+		# Run parallel trainings
+		# --------------------------------------------------------------------------
+
+		for i in self.workers:
+			if not i.is_ready() and not i.running:
+
+				i.record_start()
+
+				pid = os.fork()
+
+				# CHILD WORKER
+				if pid == 0:
+					try:
+						steps = self.args.micro_step
+						logger.info("{}.train({})".format(i.id, steps))
+						i.step(steps)
+						logger.info("{}.eval()".format(i.id))
+						results = i.eval()
+						logger.info("Queue put {} results".format(i.id))
+						self.result_queue.put((i.id, results, True))
+						logger.info("{}.exit()".format(i.id))
+					except Exception as ex:
+						q.put((i.id, None, False))
+						logger.info("{} failed, {}".format(i.id, ex))
+						sys.exit()
+					
+			
+				# SUPERVISOR
+				else:
+					self.children.append(pid)
+
+	
+
+
+		# --------------------------------------------------------------------------
+		# Collect the results
+		# --------------------------------------------------------------------------
+		
+		def process_result(r):
+			wid, results, success = r
+
+			for i in self.workers:
+				if i.id == wid:
+					if success:
+						i.record_finish(self.args.micro_step, results)
+						logger.info("recording results {} to worker {}".format(wid, results))
+					else:
+						self._remove_worker(i)
+
+					break
+
+
+		r = self.result_queue.get()
+		process_result(r)
+
+		try:
+			while True:
+				process_result(self.result_queue.get_nowait())
+
+		except libqueue.Empty:
+			pass
+
+
+	def step(self, epoch):
+		if self.args.single_threaded:
+			self.step_singlethreaded(epoch)
+		else:
+			self.step_multithreaded(epoch)
+
+
 	def maybe_save(self, epoch):
 		self.save_counter -= 1;
 		if self.save_counter <= 0:
 			self.save()
 			self.save_counter = self.save_freq
 
-	# def exploit(self, worker):
-	# 	# Edge case: never exploit
-	# 	if len(self.workers) == 1:
-	# 		return None
-
-	# 	stack = list(self.workers)
-	# 	random.shuffle(stack) # Tie-break randomly
-	# 	stack = sorted(stack, key=self.score)
-		
-	# 	n20 = max(math.ceil(len(stack)*0.2), 1)
-	# 	top20 = stack[-n20:]
-	# 	bottom20 = stack[:n20]
-		
-	# 	if worker in bottom20:
-	# 		mentor = random.choice(top20)
-	# 		return mentor
-	# 	else:
-	# 		return None
-
-	# def explore(self, epoch):
-	# 	for i in self.workers:
-	# 		if i.is_ready():
-
-	# 			logger.info("{} is ready, attempting exploit".format(i.id))
-				
-	# 			i.reset_count()
-	# 			better = self.exploit(i)
-
-	# 			if better is not None:
-	# 				if not self.params_equal(i.params, better.params):
-	# 					logger.info("{} replace with mutated {}".format(i.id, better.id))
-	# 					i.params = better.explore(self.heat)
-
-	# 					try:
-	# 						i.eval()
-	# 					except Exception:
-	# 						traceback.print_exc()
-	# 						self._remove_worker(i, epoch)
-	# 						continue
+	
 
 	def exploit(self, epoch):
 
@@ -321,6 +363,7 @@ class Supervisor(object):
 				mentor = random.choice(top20)
 				logger.info("{} replace with mutated {}".format(i.id, mentor.id))
 				i.params = mentor.explore(self.heat)
+				i.reset_count()
 
 				try:
 					i.eval()
@@ -348,12 +391,34 @@ class Supervisor(object):
 
 		
 	def run(self, epochs=1000):
-		for i in range(epochs):
-			started = time.time()
-			logger.info("Epoch {}".format(i))
-			self.scale_workers(i)
-			self.step(i)
-			self.exploit(i)
-			self.print_status(i, time.time()-started)
-			self.maybe_save(i)
+		try: 
+			i = 0;
+			while True:
+				started = time.time()
+				# logger.info("Epoch {}".format(i))
+				self.scale_workers(i)
+				self.step(i)
+				self.exploit(i)
+
+				self.print_status(i)
+
+				if i % self.save_freq == self.save_freq-1:
+					self.save(i)
+
+				if len(self.workers) > 0:
+					if self.workers[0].total_count > epochs:
+						break
+
+
+				i += 1
+
+
+		except SystemExit as ex:
+			for child in self.children:
+				try:
+					os.kill(child, signal.SIGKILL)
+				except Exception: # It's already dead
+					pass
+
+			raise ex
 			

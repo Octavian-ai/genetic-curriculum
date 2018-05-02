@@ -85,22 +85,9 @@ class ModelSession(object):
 class SingularSessionWorker(Worker):
 	
 	def __init__(self, init_params, hyperparam_spec):
-		self.model = None
-		self.graph = None
-		self.sess = None
 		self._params = {}
 
 		super().__init__(init_params, hyperparam_spec)
-
-
-	def close(self):
-		if self.sess is not None:
-			self.sess.close()
-			self.sess = None
-
-		self.graph = None
-		self.model = None
-		
 
 
 	def get_model_session(self, mode="train"):
@@ -163,12 +150,13 @@ class SingularSessionWorker(Worker):
 
 	def __setstate__(self, state):
 		self.id             = state.get("id", uuid.uuid1())
+		self.running = False
+		
 		self.total_count    = state.get("total_count", 0)
 		self.current_count  = state.get("current_count", 0)
 
 		self.results        = state.get("results", {})
 		self._params        = state.get("_params", {})
 
-		self.model = None
-		self.sess = None
+		
 

@@ -16,6 +16,7 @@ class MockArgs(object):
 		self.output_dir = "./output_test/supervisor_test"
 		self.bucket = None
 		self.gcs_dir = None
+		self.single_threaded = False
 
 class MockWorker(Worker):
 	"""For use in tests"""

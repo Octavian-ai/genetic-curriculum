@@ -128,7 +128,7 @@ def gen_worker_init_params(args):
 def train(args):
 
 	def score(worker):
-		return worker.results["correct_elements"]
+		return worker.results.get("correct_elements", -1)
 
 	s = Supervisor(
 		args,

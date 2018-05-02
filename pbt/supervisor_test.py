@@ -28,6 +28,10 @@ class SupervisorTestCase(unittest.TestCase):
 
 		return s
 
+	def test_run(self):
+		s = self.vend_supervisor()
+		s.run(1)
+
 
 	def test_load_save(self):
 		s = self.vend_supervisor()

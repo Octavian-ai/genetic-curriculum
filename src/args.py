@@ -25,6 +25,7 @@ def get_args(args=None):
 	parser.add_argument('--heat',					type=float, default=1.0)
 
 	parser.add_argument('--profile',				action='store_true')
+	parser.add_argument('--single-threaded',		action='store_true')
 
 
 	return parser.parse_args(args)
