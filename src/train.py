@@ -25,21 +25,24 @@ class DatasetParam(GeneticParam):
 		self.v = v
 
 		if self.v is None:
+			initial_max = 5
 			self.v = {
-				"min_length": 1,
-				"max_length": 3,
+				"min_length":  1,
+				"max_length":  1,
 				"min_repeats": 1,
-				"max_repeats": 3,
+				"max_repeats": 1,
 			}
+			self.v = self._mutate_dict(1.0)
 
-	def mutate(self, heat):
 
-		nv = {
+	def _mutate_dict(self, heat):
+		return {
 			k: v + (random.paretovariate(3.0) * heat * random.choice([-1.0,1.0]))
 			for k, v in self.v.items()
 		}
 
-		return type(self)(self.batch_size, nv)
+	def mutate(self, heat):
+		return type(self)(self.batch_size, self._mutate_dict(heat))
 
 	def _get_var(self, metric, fn):
 
@@ -141,7 +144,7 @@ def train(args):
 
 
 if __name__ == '__main__':
-	tf.logging.set_verbosity('INFO')
+	# tf.logging.set_verbosity('INFO')
 	args = get_args()
 	train(args)
 
