@@ -300,8 +300,8 @@ class Supervisor(object):
 				else:
 					self.children.append(pid)
 
-	
 
+		time.sleep(30)
 
 		# --------------------------------------------------------------------------
 		# Collect the results
