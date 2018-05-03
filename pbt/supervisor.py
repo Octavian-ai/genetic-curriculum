@@ -272,8 +272,10 @@ class Supervisor(object):
 		# Run parallel trainings
 		# --------------------------------------------------------------------------
 
+		steps = self.args.micro_step
+
 		for i in self.workers:
-			if not i.is_ready() and not i.running:
+			if not i.running:
 
 				i.record_start()
 
@@ -282,26 +284,24 @@ class Supervisor(object):
 				# CHILD WORKER
 				if pid == 0:
 					try:
-						steps = self.args.micro_step
 						logger.info("{}.train({})".format(i.id, steps))
 						i.step(steps)
-						logger.info("{}.eval()".format(i.id))
+						# logger.info("{}.eval()".format(i.id))
 						results = i.eval()
-						logger.info("Queue put {} results".format(i.id))
 						self.result_queue.put((i.id, results, True))
-						logger.info("{}.exit()".format(i.id))
+						logger.info("{}.result queue put success".format(i.id))
+						os._exit(os.EX_OK)
+
 					except Exception as ex:
-						q.put((i.id, None, False))
-						logger.info("{} failed, {}".format(i.id, ex))
-						sys.exit()
+						traceback.print_exc()
+						self.result_queue.put((i.id, None, False))
+						logger.info("{}.result queue put fail".format(i.id))
+						os._exit(os.EX_SOFTWARE)
 					
-			
+				
 				# SUPERVISOR
 				else:
 					self.children.append(pid)
-
-
-		time.sleep(30)
 
 		# --------------------------------------------------------------------------
 		# Collect the results
@@ -309,26 +309,29 @@ class Supervisor(object):
 		
 		def process_result(r):
 			wid, results, success = r
-
+			
 			for i in self.workers:
 				if i.id == wid:
 					if success:
 						i.record_finish(self.args.micro_step, results)
-						logger.info("recording results {} to worker {}".format(wid, results))
+						logger.info("{}.record_finish({})".format(wid, results))
 					else:
 						self._remove_worker(i)
 
 					break
 
 
+		logger.info("result_queue.get()")
 		r = self.result_queue.get()
 		process_result(r)
 
 		try:
 			while True:
+				logger.info("result_queue.get_nowait()")
 				process_result(self.result_queue.get_nowait())
 
 		except libqueue.Empty:
+			logger.info("result_queue empty")
 			pass
 
 
@@ -338,16 +341,9 @@ class Supervisor(object):
 		else:
 			self.step_multithreaded(epoch)
 
-
-	def maybe_save(self, epoch):
-		self.save_counter -= 1;
-		if self.save_counter <= 0:
-			self.save()
-			self.save_counter = self.save_freq
-
-	
-
 	def exploit(self, epoch):
+
+		logger.info("Exploit {}".format(epoch))
 
 		stack = list(self.workers)
 		random.shuffle(stack) # Tie-break randomly
@@ -402,8 +398,9 @@ class Supervisor(object):
 
 				self.print_status(i)
 
-				if i % self.save_freq == self.save_freq-1:
-					self.save(i)
+				if self.args.save:
+					if i % self.save_freq == self.save_freq-1:
+						self.save(i)
 
 				if len(self.workers) > 0:
 					if self.workers[0].total_count > epochs:

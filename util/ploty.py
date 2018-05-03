@@ -53,6 +53,7 @@ class Ploty(object):
     self.clear_screen = clear_screen
     self.legend = legend
     self.terminal = terminal
+    self.floyd = False
 
     self.header = ["x", "y", "label"]
     self.datas = {}
@@ -104,7 +105,7 @@ class Ploty(object):
     for key, value in extra_data.items():
       self.datas[name][key].append(value)
 
-    if self.terminal:
+    if self.floyd:
       print('{{"metric": "{}", "value": {}, "x": {} }}'.format(name,y,x))
 
 
