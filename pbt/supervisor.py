@@ -29,6 +29,7 @@ logger.setLevel(logging.INFO)
 
 FP = collections.namedtuple('FallbackParam', ['value'])
 
+multiprocessing.set_start_method('fork')
 
 
 class Supervisor(object):
@@ -80,7 +81,7 @@ class Supervisor(object):
 		self.heat = heat
 		self.save_freq = save_freq
 		self.save_counter = save_freq
-		self.result_queue = SimpleQueue()
+		self.result_queue = Queue()
 		self.children = []
 
 		assert "micro_step" in hyperparam_spec, "Hyperparameters must include micro_step"
@@ -247,12 +248,15 @@ class Supervisor(object):
 		not_running = not_running[:total_runners]
 
 		for i in not_running:
-			i.record_start()
+			# i.record_start()
+			i.start_time = 0
 
 			if self.args.single_threaded:
 				pid = 0
 			else:
 				pid = os.fork()
+
+			self.result_queue.cancel_join_thread()
 
 			# CHILD WORKER
 			if pid == 0:
@@ -266,7 +270,7 @@ class Supervisor(object):
 
 				except Exception as ex:
 					traceback.print_exc()
-					self.result_queue.put((i.id, None, False))
+					# self.result_queue.put((i.id, None, False))
 					logger.info("{}.result queue put fail".format(i.id))
 				
 				if not self.args.single_threaded:
@@ -280,7 +284,7 @@ class Supervisor(object):
 				self.children.append(pid)
 
 		
-		# sleep(50)
+		sleep(50)
 
 		# --------------------------------------------------------------------------
 		# Collect the results
@@ -302,11 +306,11 @@ class Supervisor(object):
 
 		try:
 			# Wait on at least one result
-			process_result(self.result_queue.get())
+			process_result(self.result_queue.get_nowait())
 
 			while not self.result_queue.empty():
 				logger.info("result_queue.get()")
-				process_result(self.result_queue.get())
+				process_result(self.result_queue.get_nowait())
 
 		except libqueue.Empty:
 			logger.info("result_queue empty")
