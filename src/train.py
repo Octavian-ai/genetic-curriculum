@@ -139,13 +139,18 @@ def train(args):
 		n_workers=args.n_workers,
 		heat=args.heat)
 
-	s.load()
+	if args.load:
+		s.load()
+
 	s.run(args.epochs)
 
 
 if __name__ == '__main__':
-	# tf.logging.set_verbosity('INFO')
 	args = get_args()
+
+	if args.log_tf:
+		tf.logging.set_verbosity('INFO')
+		
 	train(args)
 
 

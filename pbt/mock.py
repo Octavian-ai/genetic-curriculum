@@ -18,6 +18,7 @@ class MockArgs(object):
 		self.gcs_dir = None
 		self.single_threaded = False
 		self.save = True
+		self.load = True
 
 class MockWorker(Worker):
 	"""For use in tests"""

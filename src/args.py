@@ -26,7 +26,12 @@ def get_args(args=None):
 
 	parser.add_argument('--profile',				action='store_true')
 	parser.add_argument('--single-threaded',		action='store_true')
+	parser.add_argument('--log-tf',					action='store_true')
+
 	parser.add_argument('--disable-save',			action='store_false',dest="save")
+	parser.add_argument('--disable-load',			action='store_false',dest="load")
+
+
 
 
 

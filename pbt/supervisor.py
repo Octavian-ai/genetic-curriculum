@@ -13,8 +13,10 @@ import collections
 import sys
 import math
 import time
+from time import sleep
 import signal
 import queue as libqueue
+import multiprocessing
 from multiprocessing import Pool, Queue
 
 from .param import FixedParam
@@ -213,7 +215,7 @@ class Supervisor(object):
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
 
 		time_per_step = [i.time_per_step for i in self.workers if i.time_per_step is not None]
-		self.plot_progress.add_result(epoch, np.mean(time_per_step), "time_per_step")
+		self.plot_progress.add_result(epoch, (np.mean(time_per_step) if len(time_per_step) > 0 else -1), "time_per_step")
 
 		best_worker = max(self.workers, key=self.score)
 
@@ -274,34 +276,45 @@ class Supervisor(object):
 
 		steps = self.args.micro_step
 
-		for i in self.workers:
-			if not i.running:
+		total_runners = len(self.workers)
+		try:
+			total_runners = multiprocessing.cpu_count()
+		except  NotImplementedError:
+			pass
 
-				i.record_start()
+		not_running = [i for i in self.workers if not i.running]
+		random.shuffle(not_running)
+		not_running = not_running[:total_runners]
 
-				pid = os.fork()
+		for i in not_running:
+			i.record_start()
 
-				# CHILD WORKER
-				if pid == 0:
-					try:
-						logger.info("{}.train({})".format(i.id, steps))
-						i.step(steps)
-						# logger.info("{}.eval()".format(i.id))
-						results = i.eval()
-						self.result_queue.put((i.id, results, True))
-						logger.info("{}.result queue put success".format(i.id))
-						os._exit(os.EX_OK)
+			pid = os.fork()
 
-					except Exception as ex:
-						traceback.print_exc()
-						self.result_queue.put((i.id, None, False))
-						logger.info("{}.result queue put fail".format(i.id))
-						os._exit(os.EX_SOFTWARE)
-					
+			# CHILD WORKER
+			if pid == 0:
+				try:
+					logger.info("{}.train({})".format(i.id, steps))
+					i.step(steps)
+					logger.info("{}.eval()".format(i.id))
+					results = i.eval()
+					self.result_queue.put((i.id, results, True))
+					logger.info("{}.result queue put success".format(i.id))					
+
+				except Exception as ex:
+					traceback.print_exc()
+					self.result_queue.put((i.id, None, False))
+					logger.info("{}.result queue put fail".format(i.id))
 				
-				# SUPERVISOR
-				else:
-					self.children.append(pid)
+				sleep(5)
+				os._exit(os.EX_OK)
+				
+			
+			# SUPERVISOR
+			else:
+				self.children.append(pid)
+
+		# sleep(10)
 
 		# --------------------------------------------------------------------------
 		# Collect the results
@@ -321,11 +334,11 @@ class Supervisor(object):
 					break
 
 
-		logger.info("result_queue.get()")
-		r = self.result_queue.get()
-		process_result(r)
-
 		try:
+			logger.info("result_queue.get()")
+			r = self.result_queue.get()
+			process_result(r)
+
 			while True:
 				logger.info("result_queue.get_nowait()")
 				process_result(self.result_queue.get_nowait())
