@@ -1,5 +1,5 @@
 
-import tensorflow as tf
+
 import numpy as np
 import random
 import pickle
@@ -289,7 +289,10 @@ class Supervisor(object):
 		for i in not_running:
 			i.record_start()
 
-			pid = os.fork()
+			if self.args.single_threaded:
+				pid = 0
+			else:
+				pid = os.fork()
 
 			# CHILD WORKER
 			if pid == 0:
@@ -306,8 +309,9 @@ class Supervisor(object):
 					self.result_queue.put((i.id, None, False))
 					logger.info("{}.result queue put fail".format(i.id))
 				
-				sleep(5)
-				os._exit(os.EX_OK)
+				if not self.args.single_threaded:
+					sleep(5)
+					os._exit(os.EX_OK)
 				
 			
 			# SUPERVISOR
@@ -349,14 +353,14 @@ class Supervisor(object):
 
 
 	def step(self, epoch):
-		if self.args.single_threaded:
-			self.step_singlethreaded(epoch)
-		else:
-			self.step_multithreaded(epoch)
+		# if self.args.single_threaded:
+			# self.step_singlethreaded(epoch)
+		# else:
+		self.step_multithreaded(epoch)
 
 	def exploit(self, epoch):
 
-		logger.info("Exploit {}".format(epoch))
+		# logger.info("Exploit {}".format(epoch))
 
 		stack = list(self.workers)
 		random.shuffle(stack) # Tie-break randomly
@@ -374,13 +378,6 @@ class Supervisor(object):
 				i.params = mentor.explore(self.heat)
 				i.reset_count()
 
-				try:
-					i.eval()
-				except Exception:
-					traceback.print_exc()
-					self._remove_worker(i, epoch)
-					continue
-
 
 
 	def breed(self, epoch):
@@ -390,6 +387,8 @@ class Supervisor(object):
 				newbie = self.breed_worker(i)
 
 				try:
+					# Warning: executing this in the main thread will break
+					# because Tensorflow is not thread safe.
 					newbie.eval()
 
 				except Exception:
@@ -404,7 +403,7 @@ class Supervisor(object):
 			i = 0;
 			while True:
 				started = time.time()
-				# logger.info("Epoch {}".format(i))
+				logger.info("Epoch {}".format(i))
 				self.scale_workers(i)
 				self.step(i)
 				self.exploit(i)
