@@ -99,15 +99,6 @@ class SingularSessionWorker(Worker):
 			mode
 		)
 
-		
-	@property
-	def params(self):  
-		return self._params;
-		
-	@params.setter
-	def params(self, value):
-		self._params = value
-
 
 		
 	def do_step(self, steps):
@@ -122,6 +113,7 @@ class SingularSessionWorker(Worker):
 		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
 
 		sm.close()
+			
 				
 	def do_eval(self):
 		sm = self.get_model_session("eval")
@@ -150,7 +142,7 @@ class SingularSessionWorker(Worker):
 
 	def __setstate__(self, state):
 		self.id             = state.get("id", uuid.uuid1())
-		self.running = False
+		self.running 		= False
 		
 		self.total_count    = state.get("total_count", 0)
 		self.current_count  = state.get("current_count", 0)

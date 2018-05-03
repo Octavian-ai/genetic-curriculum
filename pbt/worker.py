@@ -49,7 +49,7 @@ class Worker(object):
 
 
 	# --------------------------------------------------------------------------
-	# Methods 
+	# Parameter methods
 	# --------------------------------------------------------------------------
 
 	def gen_params(self, hyperparam_spec):
@@ -65,12 +65,22 @@ class Worker(object):
 	def params(self, params):
 		self._params = params
 
+	def explore(self, heat):
+		return {
+			k:v.mutate(heat) for k, v in self.params.items()
+		}
+
 
 	# Experimental, plan to roll this out everywhere to replace params
 	@property
 	def friendly_params(self):
 		return Params(self.init_params, self._params)
 		
+
+	# --------------------------------------------------------------------------
+	# Properties
+	# --------------------------------------------------------------------------
+	
 
 	# Will crash if model_id param missing
 	# @returns dirictory string to save model to
@@ -87,7 +97,22 @@ class Worker(object):
 		else:
 			return os.path.join(self.init_params["model_dir"], self.friendly_params["model_id"]["warm_start_from"])
 
+	def is_ready(self):
+		mi = self.friendly_params["micro_step"]
+		ma = self.friendly_params["macro_step"]
 
+		return self.current_count >= mi * ma
+
+
+	# --------------------------------------------------------------------------
+	# Step and eval
+	# --------------------------------------------------------------------------
+	
+	@property
+	def macro_steps(self):
+		mi = self.friendly_params["micro_step"]
+		ma = self.friendly_params["macro_step"]
+		return self.total_count / mi / ma
 
 
 	def reset_count(self):
@@ -98,10 +123,14 @@ class Worker(object):
 		self.total_count += steps
 		self.do_step(steps)
 
+	def eval(self):
+		self.results = self.do_eval()
+		return self.results
+
 
 	# --------------------------------------------------------------------------
-	# For multi-process sync
-	#
+	# Multi-process sync
+	# --------------------------------------------------------------------------
 	
 	def record_start(self):
 		self.running = True
@@ -114,31 +143,10 @@ class Worker(object):
 		self.time_per_step = float(time.time() - self.start_time) / float(steps)
 		self.running = False
 
-	# 
+
 	# --------------------------------------------------------------------------
- 
-
-	def eval(self):
-		self.results = self.do_eval()
-		return self.results
-
-	def is_ready(self):
-		mi = self.friendly_params["micro_step"]
-		ma = self.friendly_params["macro_step"]
-
-		return self.current_count >= mi * ma
-
-	def explore(self, heat):
-		return {
-			k:v.mutate(heat) for k, v in self.params.items()
-		}
-
-	@property
-	def macro_steps(self):
-		mi = self.friendly_params["micro_step"]
-		ma = self.friendly_params["macro_step"]
-		return self.total_count / mi / ma
-	
+	# Load and save
+	# --------------------------------------------------------------------------
 
 	def save(self, path):
 		with open(path, 'wb') as file:
