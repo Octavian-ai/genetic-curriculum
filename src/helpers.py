@@ -121,11 +121,11 @@ def gen_worker_init_params(args):
 	return p
 
 
+def score(worker):
+	return worker.results.get("correct_elements", -1)
 
-def train(args):
 
-	def score(worker):
-		return worker.results.get("correct_elements", -1)
+def get_supervisor(args):
 
 	s = Supervisor(
 		args,
@@ -136,10 +136,7 @@ def train(args):
 		n_workers=args.n_workers,
 		heat=args.heat)
 
-	if args.load:
-		s.load()
-
-	s.run(args.epochs)
+	return s
 
 
 

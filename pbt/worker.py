@@ -24,14 +24,14 @@ class Worker(object):
 
 	"""
 	def __init__(self, init_params, hyperparam_spec):
-		self.current_count = 0
 		self.total_count = 0
 		self.id = uuid.uuid1()
 		self.results = {}
 		self.init_params = init_params
-		self.running = False
-		self.time_per_step = None
+		self.time_started = 0
+		self.performance = (0,0)
 		self.gen_params(hyperparam_spec)
+		self.reset_count()
 
 	
 	# --------------------------------------------------------------------------
@@ -117,7 +117,7 @@ class Worker(object):
 
 	def reset_count(self):
 		self.current_count = 0
-	
+		
 	def step(self, steps):
 		self.current_count += steps
 		self.total_count += steps
@@ -133,16 +133,14 @@ class Worker(object):
 	# --------------------------------------------------------------------------
 	
 	def record_start(self):
-		self.running = True
-		self.start_time = time.time()
+		self.time_started = time.time()
+		
 
 	def record_finish(self, steps, results):
 		self.current_count += steps
 		self.total_count += steps
+		self.performance = (steps, time.time()-self.time_started)
 		self.results = results
-		self.time_per_step = float(time.time() - self.start_time) / float(steps)
-		self.running = False
-
 
 	# --------------------------------------------------------------------------
 	# Load and save
@@ -157,6 +155,7 @@ class Worker(object):
 		with open(path, 'rb') as file:
 			w = pickle.load(file)
 		w.init_params = init_params
+		w.reset_count()
 		return w
 
 

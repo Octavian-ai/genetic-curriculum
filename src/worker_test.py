@@ -5,7 +5,7 @@ import tensorflow as tf
 import pbt
 
 from .args import get_args
-from .train import gen_param_spec, gen_worker_init_params, DatasetParam
+from .helpers import gen_param_spec, gen_worker_init_params, DatasetParam
 
 import logging
 logger = logging.getLogger(__name__)

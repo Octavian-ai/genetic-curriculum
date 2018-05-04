@@ -6,6 +6,9 @@ import math
 import string
 import copy
 import uuid
+import collections
+
+FP = collections.namedtuple('FallbackParam', ['value'])
 
 class GeneticParam(object):
   """Represents a parameter that can be sampled, copied, compared and mutated"""

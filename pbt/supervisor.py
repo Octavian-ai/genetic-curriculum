@@ -15,21 +15,17 @@ import math
 import time
 from time import sleep
 import signal
-import queue as libqueue
-import multiprocessing
-from multiprocessing import Pool, Queue, SimpleQueue
 
-from .param import FixedParam
+
+from google.cloud import pubsub_v1
+
+from .param import FixedParam, FP
+from .specs import *
 
 from util import Ploty
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-FP = collections.namedtuple('FallbackParam', ['value'])
-
-multiprocessing.set_start_method('fork')
 
 
 class Supervisor(object):
@@ -81,8 +77,7 @@ class Supervisor(object):
 		self.heat = heat
 		self.save_freq = save_freq
 		self.save_counter = save_freq
-		self.result_queue = Queue()
-		self.children = []
+
 
 		assert "micro_step" in hyperparam_spec, "Hyperparameters must include micro_step"
 		assert "macro_step" in hyperparam_spec, "Hyperparameters must include macro_step"
@@ -100,10 +95,9 @@ class Supervisor(object):
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
 		self.plot_hyper    = Ploty(args, title='Hyper parameters', x='Time', y="Value")
 
-		try:
-			logging.info("Number of CPUs: {}".format(multiprocessing.cpu_count()))
-		except NotImplementedError:
-			pass
+		self.publisher = pubsub_v1.PublisherClient()
+		self.run_topic_path = self.publisher.topic_path(self.args.project, "pbt_run")
+		self.result_topic_path = self.publisher.topic_path(self.args.project, "pbt_result")
 
 
 	def save(self):
@@ -212,14 +206,17 @@ class Supervisor(object):
 		self.plot_progress.add_result(epoch, self.fail_count, "failed_workers")
 
 
+	def single_step(self, worker):
+		steps = worker.params.get("micro_step", FP(1)).value
+		logger.info("{}.train({})".format(worker.id, steps))
+		worker.step(steps)
+		logger.info("{}.eval()".format(worker.id))
+		return worker.eval()
+
 	def step_singlethreaded(self, epoch):
 		for i in self.workers:
 			try:
-				steps = i.params.get("micro_step", FP(1)).value
-				logger.info("{}.train({})".format(i.id, steps))
-				i.step(steps)
-				logger.info("{}.eval()".format(i.id))
-				i.eval()
+				self.single_step(i)
 				
 			except Exception:
 				traceback.print_exc()
@@ -229,98 +226,32 @@ class Supervisor(object):
 		if len(self.workers) == 0:
 			raise Exception("All workers failed, your model has bugs")
 
-	def step_multithreaded(self, epoch):
+
+
+	def step_distributed(self, epoch):
 
 		# --------------------------------------------------------------------------
 		# Run parallel trainings
 		# --------------------------------------------------------------------------
 
-		steps = self.args.micro_step
-
-		total_runners = len(self.workers)
-		try:
-			total_runners = multiprocessing.cpu_count()
-		except NotImplementedError:
-			pass
-
-		not_running = [i for i in self.workers if not i.running]
-		random.shuffle(not_running)
-		not_running = not_running[:total_runners]
-
+		not_running = [
+			i for i in self.workers 
+			if time.time() - i.time_started > self.args.job_timeout
+		]
+		
 		for i in not_running:
-			# i.record_start()
-			i.start_time = 0
+			i.record_start()
+			run_spec = RunSpec(i.id, i.params)
+			data = pickle.dumps(run_spec)
+			self.publisher.publish(self.run_topic_path, data=data)
+			print('Sent run message: {}'.format(run_spec))
 
-			if self.args.single_threaded:
-				pid = 0
-			else:
-				pid = os.fork()
-
-			self.result_queue.cancel_join_thread()
-
-			# CHILD WORKER
-			if pid == 0:
-				try:
-					logger.info("{}.train({})".format(i.id, steps))
-					i.step(steps)
-					logger.info("{}.eval()".format(i.id))
-					results = i.eval()
-					self.result_queue.put((i.id, results, True))
-					logger.info("{}.result queue put success".format(i.id))					
-
-				except Exception as ex:
-					traceback.print_exc()
-					# self.result_queue.put((i.id, None, False))
-					logger.info("{}.result queue put fail".format(i.id))
-				
-				if not self.args.single_threaded:
-					sleep(1)
-					logger.info("os._exit(OK)")
-					os._exit(os.EX_OK)
-				
-			
-			# SUPERVISOR
-			else:
-				self.children.append(pid)
-
-		
-		sleep(50)
-
-		# --------------------------------------------------------------------------
-		# Collect the results
-		# --------------------------------------------------------------------------
-		
-		def process_result(r):
-			wid, results, success = r
-			
-			for i in self.workers:
-				if i.id == wid:
-					if success:
-						i.record_finish(self.args.micro_step, results)
-						logger.info("{}.record_finish({})".format(wid, results))
-					else:
-						self._remove_worker(i)
-
-					break
-
-
-		try:
-			# Wait on at least one result
-			process_result(self.result_queue.get_nowait())
-
-			while not self.result_queue.empty():
-				logger.info("result_queue.get()")
-				process_result(self.result_queue.get_nowait())
-
-		except libqueue.Empty:
-			logger.info("result_queue empty")
-			pass
-
+		sleep(40)
 
 
 
 	def step(self, epoch):
-		self.step_multithreaded(epoch)
+		self.step_distributed(epoch)
 
 	def exploit(self, epoch):
 		if len(self.workers) > 0:
@@ -333,7 +264,7 @@ class Supervisor(object):
 			bottom20 = stack[:n20]
 
 			for i in bottom20:
-				if i.is_ready() and not i.running:
+				if i.is_ready() and (time.time() - i.time_started > self.args.job_timeout):
 					mentor = random.choice(top20)
 					logger.info("{} replace with mutated {}".format(i.id, mentor.id))
 					i.params = mentor.explore(self.heat)
@@ -394,8 +325,11 @@ class Supervisor(object):
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
 
-		time_per_step = [i.time_per_step for i in self.workers if i.time_per_step is not None]
-		self.plot_progress.add_result(epoch, (np.mean(time_per_step) if len(time_per_step) > 0 else -1), "time_per_step")
+		steps = sum([i.performance[0] for i in self.workers])
+		time = sum([i.performance[1] for i in self.workers])
+
+		steps_per_min = steps / time * 60 if time > 0 else 0
+		self.plot_progress.add_result(epoch, steps_per_min, "steps_per_min")
 
 		best_worker = max(self.workers, key=self.score)
 
@@ -409,40 +343,101 @@ class Supervisor(object):
 		self.plot_hyper.write()
 
 
+	def manage(self):
+		subscriber = pubsub_v1.SubscriberClient()
+		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
+
+		def result_callback(message):
+			result_spec = pickle.loads(message.data)
+			logger.info('Received result message: {}'.format(result_spec))
+			
+			for i in self.workers:
+				if i.id == result_spec.id:
+					if result_spec.success:
+						i.record_finish(self.args.micro_step, result_spec.results)
+						logger.info("{}.record_finish({})".format(result_spec.id, result_spec.results))
+					else:
+						self._remove_worker(i)
+
+					message.ack()
+					return
+
+			message.nack()
+
+		subscriber.subscribe(result_subscription_path, callback=result_callback)
+
+		self.run()
+
+	def drone(self):
+		subscriber = pubsub_v1.SubscriberClient()
+		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
+		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
+
+		def run_callback(message):
+			
+			run_spec = pickle.loads(message.data)
+			logger.info('Received run message: {}'.format(run_spec))
+			
+			try:
+				worker = self.SubjectClass(self.init_params, self.hyperparam_spec)
+				worker.params = run_spec.params
+				worker.id = run_spec.id
+				results = self.single_step(worker)
+				result_spec = ResultSpec(run_spec.id, results, True)
+
+			except Exception as e:
+				traceback.print_exc()
+				result_spec = ResultSpec(run_spec.id, None, False)
+
+			data = pickle.dumps(result_spec)
+			self.publisher.publish(self.result_topic_path, data=data)
+			message.ack()
+
+
+		# import concurrent.futures
+		# executor_kwargs = {}
+		# if sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 6):
+		# 	executor_kwargs['thread_name_prefix'] = (
+		# 		'ThreadPoolExecutor-ThreadScheduler')
+		# executor = concurrent.futures.ThreadPoolExecutor(
+		# 	max_workers=1,
+		# 	**executor_kwargs
+		# )
+
+		# from .scheduler import ThreadScheduler
+		# scheduler = ThreadScheduler(executor)
+
+		subscriber.subscribe(run_subscription_path, 
+			callback=run_callback, 
+			flow_control=flow_control,
+			# scheduler= scheduler
+			)
+
+		while True:
+			sleep(5)
+
+
 		
 	def run(self, epochs=1000):
-		try: 
-			i = 0;
-			while True:
-				started = time.time()
-				logger.info("Epoch {}".format(i))
-				self.scale_workers(i)
-				self.step(i)
+	
+		for i in range(epochs):
+			started = time.time()
+			logger.info("Epoch {}".format(i))
+			self.scale_workers(i)
+			self.step(i)
 
-				logging.info("Exploit")
-				self.exploit(i)
+			logging.info("Exploit")
+			self.exploit(i)
 
-				logging.info("Print status")
-				self.print_status(i)
+			logging.info("Print status")
+			self.print_status(i)
 
-				if self.args.save:
-					if i % self.save_freq == self.save_freq-1:
-						self.save(i)
+			if self.args.save:
+				if i % self.save_freq == self.save_freq-1:
+					self.save()
 
-				if len(self.workers) > 0:
-					if self.workers[0].total_count > epochs:
-						break
+			if len(self.workers) > 0:
+				if self.workers[0].total_count > epochs:
+					break
 
-
-				i += 1
-
-
-		except SystemExit as ex:
-			for child in self.children:
-				try:
-					os.kill(child, signal.SIGKILL)
-				except Exception: # It's already dead
-					pass
-
-			raise ex
 			

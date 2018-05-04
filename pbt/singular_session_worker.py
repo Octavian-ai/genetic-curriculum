@@ -114,7 +114,7 @@ class SingularSessionWorker(Worker):
 
 		sm.close()
 			
-				
+
 	def do_eval(self):
 		sm = self.get_model_session("eval")
 
@@ -142,7 +142,8 @@ class SingularSessionWorker(Worker):
 
 	def __setstate__(self, state):
 		self.id             = state.get("id", uuid.uuid1())
-		self.running 		= False
+		self.time_started 	= 0
+		self.performance 	= (0,0)
 		
 		self.total_count    = state.get("total_count", 0)
 		self.current_count  = state.get("current_count", 0)

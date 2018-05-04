@@ -1,5 +1,6 @@
 
 import argparse
+import os
 
 def get_args(args=None):
 	parser = argparse.ArgumentParser()
@@ -11,6 +12,7 @@ def get_args(args=None):
 	# For storing to Google Cloud
 	parser.add_argument('--bucket',					type=str,  default=None)
 	parser.add_argument('--gcs-dir',				type=str,  default=None)
+	parser.add_argument('--project',				type=str,  default=os.getenv("GOOGLE_CLOUD_PROJECT", "octavian-181621"))
 
 	parser.add_argument('--epochs', 				type=int,  default=1000)
 	parser.add_argument('--micro-step', 			type=int,  default=5 * 1000)
@@ -18,6 +20,8 @@ def get_args(args=None):
 
 	parser.add_argument('--batch-size', 			type=int,  default=32)
 	parser.add_argument('--n-workers', 				type=int,  default=10)
+	parser.add_argument('--job-timeout', 			type=int,  default=60*10)
+
 	
 	parser.add_argument('--lr',						type=float, default=1e-4)
 	parser.add_argument('--max-grad-norm',			type=float, default=50)
