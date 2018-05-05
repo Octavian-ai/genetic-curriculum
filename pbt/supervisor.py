@@ -344,9 +344,6 @@ class Supervisor(object):
 
 
 	def manage(self):
-		subscriber = pubsub_v1.SubscriberClient()
-		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
-
 		def result_callback(message):
 
 			try:
@@ -371,15 +368,14 @@ class Supervisor(object):
 
 			message.nack()
 
+		subscriber = pubsub_v1.SubscriberClient()
+		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
 		subscriber.subscribe(result_subscription_path, callback=result_callback)
 
 		self.run()
 
 	def drone(self):
-		subscriber = pubsub_v1.SubscriberClient()
-		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
-		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
-
+		
 		def run_callback(message):
 			try:
 				run_spec = pickle.loads(message.data)
@@ -427,6 +423,12 @@ class Supervisor(object):
 
 		from .scheduler import ThreadScheduler
 		scheduler = ThreadScheduler(executor)
+
+		# --------------------------------------------------------------------------
+
+		subscriber = pubsub_v1.SubscriberClient()
+		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
+		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 
 		future = subscriber.subscribe_experimental(run_subscription_path, 
 			callback=run_callback, 
