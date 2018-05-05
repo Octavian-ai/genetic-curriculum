@@ -406,37 +406,18 @@ class Supervisor(object):
 			message.nack()
 
 
-		# --------------------------------------------------------------------------
-		# Messy hack to make it single threaded. Copy-pasted code from the google 
-		# codebase because this stuff's not exposed
-		# --------------------------------------------------------------------------
-
-		import concurrent.futures
-		executor_kwargs = {}
-		if sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 6):
-			executor_kwargs['thread_name_prefix'] = (
-				'ThreadPoolExecutor-ThreadScheduler')
-		executor = concurrent.futures.ThreadPoolExecutor(
-			max_workers=1,
-			**executor_kwargs
-		)
-
-		from .scheduler import ThreadScheduler
-		scheduler = ThreadScheduler(executor)
-
-		# --------------------------------------------------------------------------
 
 		subscriber = pubsub_v1.SubscriberClient()
 		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
 		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 
-		future = subscriber.subscribe_experimental(run_subscription_path, 
+		subscriber.subscribe(run_subscription_path, 
 			callback=run_callback, 
-			flow_control=flow_control,
-			scheduler_= scheduler
+			flow_control=flow_control
 			)
 
-		return future.result()
+		while True:
+			sleep(5)
 
 		
 	def run(self, epochs=1000):

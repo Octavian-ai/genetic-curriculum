@@ -9,7 +9,7 @@ def get_args(args=None):
 	parser.add_argument('--output-dir', 			type=str,  default="./output")
 	parser.add_argument('--model-dir',	 			type=str,  default="./output/checkpoint")
 
-	parser.add_argument('--group',					type=str,  default="default", help="A group of drones and manager - set this to a personal string to keep your experiment seperate from other peoples")
+	parser.add_argument('--group',					type=str,  default=os.getenv("PBT_GROUP", "default"), help="A group of drones and manager - set this to a personal string to keep your experiment seperate from other peoples")
 
 	# For storing to Google Cloud
 	parser.add_argument('--bucket',					type=str,  default=None)
