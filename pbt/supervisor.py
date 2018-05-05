@@ -241,7 +241,7 @@ class Supervisor(object):
 		
 		for i in not_running:
 			i.record_start()
-			run_spec = RunSpec(i.id, i.params)
+			run_spec = RunSpec(i.id, i.params, self.args.group)
 			data = pickle.dumps(run_spec)
 			self.publisher.publish(self.run_topic_path, data=data)
 			print('Sent run message: {}'.format(run_spec))
@@ -348,19 +348,26 @@ class Supervisor(object):
 		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
 
 		def result_callback(message):
-			result_spec = pickle.loads(message.data)
-			logger.info('Received result message: {}'.format(result_spec))
-			
-			for i in self.workers:
-				if i.id == result_spec.id:
-					if result_spec.success:
-						i.record_finish(self.args.micro_step, result_spec.results)
-						logger.info("{}.record_finish({})".format(result_spec.id, result_spec.results))
-					else:
-						self._remove_worker(i)
 
-					message.ack()
-					return
+			try:
+				result_spec = pickle.loads(message.data)
+
+				if result_spec.group == self.args.group:
+					logger.info('Received result message: {}'.format(result_spec))
+					for i in self.workers:
+						if i.id == result_spec.id:
+							if result_spec.success:
+								i.record_finish(self.args.micro_step, result_spec.results)
+								logger.info("{}.record_finish({})".format(result_spec.id, result_spec.results))
+							else:
+								self._remove_worker(i)
+
+							message.ack()
+							return
+
+			except:
+				# Ok, that message wasn't for my codebase
+				pass
 
 			message.nack()
 
@@ -374,48 +381,60 @@ class Supervisor(object):
 		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 
 		def run_callback(message):
-			
-			run_spec = pickle.loads(message.data)
-			logger.info('Received run message: {}'.format(run_spec))
-			
 			try:
-				worker = self.SubjectClass(self.init_params, self.hyperparam_spec)
-				worker.params = run_spec.params
-				worker.id = run_spec.id
-				results = self.single_step(worker)
-				result_spec = ResultSpec(run_spec.id, results, True)
+				run_spec = pickle.loads(message.data)
 
-			except Exception as e:
-				traceback.print_exc()
-				result_spec = ResultSpec(run_spec.id, None, False)
+				if run_spec.group == self.args.group:
+					logger.info('Received run message: {}'.format(run_spec))
+					
+					try:
+						worker = self.SubjectClass(self.init_params, self.hyperparam_spec)
+						worker.params = run_spec.params
+						worker.id = run_spec.id
+						results = self.single_step(worker)
+						result_spec = ResultSpec(run_spec.id, results, True, group=self.args.group)
 
-			data = pickle.dumps(result_spec)
-			self.publisher.publish(self.result_topic_path, data=data)
-			message.ack()
+					except Exception as e:
+						traceback.print_exc()
+						result_spec = ResultSpec(run_spec.id, None, False, group=self.args.group)
+
+					data = pickle.dumps(result_spec)
+					self.publisher.publish(self.result_topic_path, data=data)
+					message.ack()
+					return
+
+			except:
+				# Ok, that message wasn't for my codebase
+				pass
+
+			message.nack()
 
 
-		# import concurrent.futures
-		# executor_kwargs = {}
-		# if sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 6):
-		# 	executor_kwargs['thread_name_prefix'] = (
-		# 		'ThreadPoolExecutor-ThreadScheduler')
-		# executor = concurrent.futures.ThreadPoolExecutor(
-		# 	max_workers=1,
-		# 	**executor_kwargs
-		# )
+		# --------------------------------------------------------------------------
+		# Messy hack to make it single threaded. Copy-pasted code from the google 
+		# codebase because this stuff's not exposed
+		# --------------------------------------------------------------------------
 
-		# from .scheduler import ThreadScheduler
-		# scheduler = ThreadScheduler(executor)
+		import concurrent.futures
+		executor_kwargs = {}
+		if sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 6):
+			executor_kwargs['thread_name_prefix'] = (
+				'ThreadPoolExecutor-ThreadScheduler')
+		executor = concurrent.futures.ThreadPoolExecutor(
+			max_workers=1,
+			**executor_kwargs
+		)
 
-		subscriber.subscribe(run_subscription_path, 
+		from .scheduler import ThreadScheduler
+		scheduler = ThreadScheduler(executor)
+
+		future = subscriber.subscribe_experimental(run_subscription_path, 
 			callback=run_callback, 
 			flow_control=flow_control,
-			# scheduler= scheduler
+			scheduler_= scheduler
 			)
 
-		while True:
-			sleep(5)
-
+		return future.result()
 
 		
 	def run(self, epochs=1000):
