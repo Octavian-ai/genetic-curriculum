@@ -103,15 +103,8 @@ class SingularSessionWorker(Worker):
 		
 	def do_step(self, steps):
 		sm = self.get_model_session("train")
-
-		started = time.time()
 		for i in range(steps):
 			_, loss = sm.run([sm.model.train_op, sm.model.loss])
-
-		time_taken = time.time() - started
-
-		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
-
 		sm.close()
 			
 
@@ -128,7 +121,6 @@ class SingularSessionWorker(Worker):
 			for k, v in r.items()
 		}
 		
-
 
 	# Hooks for Pickle
 	def __getstate__(self):

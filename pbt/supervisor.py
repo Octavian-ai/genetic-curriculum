@@ -201,7 +201,7 @@ class Supervisor(object):
 			bottom20 = stack[:n20]
 
 			readies = [i for i in bottom20 if i.is_ready()]
-			sort(readies, key=self.score)
+			readies.sort(key=self.score)
 			for i in readies[:min(-delta, len(readies))]:
 				self.workers.remove(i)
 
@@ -294,7 +294,7 @@ class Supervisor(object):
 			run_spec = RunSpec(i.id, i.params, self.args.group)
 			data = pickle.dumps(run_spec)
 			self.publisher.publish(self.run_topic_path, data=data)
-			print('{}.step()'.format(i.id))
+			print('{}.start()'.format(i.id))
 
 		sleep(40)
 
@@ -318,9 +318,7 @@ class Supervisor(object):
 					mentor = random.choice(top20)
 					logger.info("{} replace with mutated {}".format(i.id, mentor.id))
 					i.params = mentor.explore(self.heat)
-					logger.info("reset count")
 					i.reset_count()
-					logger.info("reset count done")
 
 
 
@@ -357,7 +355,7 @@ class Supervisor(object):
 						if i.id == result_spec.id:
 							if result_spec.success:
 								i.record_finish(self.args.micro_step, result_spec.results)
-								logger.info("{}.record_finish({})".format(result_spec.id, result_spec.results))
+								logger.info("{}.finish({})".format(result_spec.id, result_spec.results))
 							else:
 								self._remove_worker(i)
 
@@ -383,12 +381,13 @@ class Supervisor(object):
 				run_spec = pickle.loads(message.data)
 
 				if run_spec.group == self.args.group:
-					# logger.info('Received run message: {}'.format(run_spec))
+					logger.info('Received run message: {}'.format(run_spec))
 					
 					try:
 						worker = self.SubjectClass(self.init_params, self.hyperparam_spec)
 						worker.params = run_spec.params
 						worker.id = run_spec.id
+						message.ack() # training takes too long and the ack will miss its window
 						results = self.single_step(worker)
 						result_spec = ResultSpec(run_spec.id, results, True, group=self.args.group)
 
@@ -398,7 +397,7 @@ class Supervisor(object):
 
 					data = pickle.dumps(result_spec)
 					self.publisher.publish(self.result_topic_path, data=data)
-					message.ack()
+					
 					return
 
 			except:
@@ -423,25 +422,24 @@ class Supervisor(object):
 
 		
 	def run(self, epochs=1000):
-	
-		for i in range(epochs):
-			started = time.time()
-			logger.info("Epoch {}".format(i))
-			self.scale_workers(i)
-			self.step(i)
-
-			logging.info("Exploit")
-			self.exploit(i)
-
-			logging.info("Print status")
-			self.print_status(i)
+		epoch = 0
+		while True:
+			# logger.info("Epoch {}".format(epoch))
+			self.scale_workers(epoch)
+			self.step(epoch)
+			self.exploit(epoch)
+			self.print_status(epoch)
 
 			if self.args.save:
-				if i % self.save_freq == self.save_freq-1:
+				if epoch % self.save_freq == self.save_freq-1:
 					self.save()
 
 			if len(self.workers) > 0:
-				if self.workers[0].total_count > epochs:
+				oldest = max(self.workers, key=lambda w: w.total_count)
+				if oldest.total_count > epochs * self.args.micro_step:
+					logger.info("Training completed ({} epochs, oldest worker completed {} total steps)".format(epoch, oldest.total_count))
 					break
+
+			epoch += 1
 
 			
