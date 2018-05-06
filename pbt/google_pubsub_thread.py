@@ -18,6 +18,7 @@ from concurrent import futures
 import logging
 import sys
 import threading
+import multiprocessing
 
 import grpc
 from six.moves import queue as queue_mod
@@ -140,7 +141,7 @@ class Policy(base.BasePolicy):
                 executor_kwargs['thread_name_prefix'] = (
                     'ThreadPoolExecutor-SubscriberPolicy')
             return futures.ThreadPoolExecutor(
-                max_workers=1,
+                max_workers=multiprocessing.cpu_count(),
                 **executor_kwargs
             )
         else:

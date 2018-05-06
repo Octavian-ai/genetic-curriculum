@@ -14,10 +14,11 @@ gcloud ml-engine jobs submit training "$JOB_NAME" \
     --region "$REGION" \
     --runtime-version=1.6 \
     --python-version=3.5 \
-    --config "./gcloud-config.json" \
+    --scale-tier "STANDARD_1" \
     -- \
     --output-dir "./output" \
     --gcs-dir "$JOB_NAME" \
     --bucket "$BUCKET_NAME" \
     --model-dir "gs://${BUCKET_NAME}/${JOB_NAME}/checkpoint" \
-    --n-workers 28
+    --n-workers 15
+    --group "$JOB_NAME"
