@@ -134,6 +134,56 @@ class Supervisor(object):
 			except Exception as e:
 				print(e)
 
+	def print_status(self, epoch):
+
+		measures = {
+			"score": self.score
+		}
+
+		if len(self.workers) > 0 and self.workers[0].results is not None:
+			for key in self.workers[0].results.keys():
+				measures[key] = lambda i: i.results.get(key, -1)
+		
+		for i, worker in enumerate(self.workers):
+
+			self.plot_workers.add_result(epoch, self.score(worker),  str(i)+"_score")
+
+			for key, fn in measures.items():
+				self.plot_hyper.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '--')
+
+			for key, val in worker.params.items():
+				if not isinstance(val, FixedParam):
+					if isinstance(val.metric, int) or isinstance(val.metric, float):
+						self.plot_hyper.add_result(epoch, val.metric, str(i)+"_"+key)
+
+		for key, fn in measures.items():
+			vs = [fn(i) for i in self.workers]
+
+			if len(vs) > 0:
+				best = max(vs)
+				worst = min(vs)
+				self.plot_progress.add_result(epoch, best, key+"_max")
+				self.plot_progress.add_result(epoch, worst, key+"_min")
+
+		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
+
+		steps = sum([i.performance[0] for i in self.workers])
+		time = sum([i.performance[1] for i in self.workers])
+
+		steps_per_min = steps / time * 60 if time > 0 else 0
+		self.plot_progress.add_result(epoch, steps_per_min, "steps_per_min")
+
+		best_worker = max(self.workers, key=self.score)
+
+		for key, val in best_worker.params.items():
+			if not isinstance(val, FixedParam):
+				if isinstance(val.metric, int) or isinstance(val.metric, float):
+					self.plot_progress.add_result(epoch, val.metric, key+"_best")
+
+		self.plot_progress.write()
+		self.plot_workers.write()
+		self.plot_hyper.write()
+
 
 	def scale_workers(self, epoch):
 
@@ -244,7 +294,7 @@ class Supervisor(object):
 			run_spec = RunSpec(i.id, i.params, self.args.group)
 			data = pickle.dumps(run_spec)
 			self.publisher.publish(self.run_topic_path, data=data)
-			print('Sent run message: {}'.format(run_spec))
+			print('{}.step()'.format(i.id))
 
 		sleep(40)
 
@@ -292,55 +342,7 @@ class Supervisor(object):
 					continue
 
 
-	def print_status(self, epoch):
-
-		measures = {
-			"score": self.score
-		}
-
-		if len(self.workers) > 0 and self.workers[0].results is not None:
-			for key in self.workers[0].results.keys():
-				measures[key] = lambda i: i.results.get(key, -1)
-		
-		for i, worker in enumerate(self.workers):
-
-			self.plot_workers.add_result(epoch, self.score(worker),  str(i)+"_score")
-
-			for key, fn in measures.items():
-				self.plot_hyper.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '--')
-
-			for key, val in worker.params.items():
-				if not isinstance(val, FixedParam):
-					if isinstance(val.metric, int) or isinstance(val.metric, float):
-						self.plot_hyper.add_result(epoch, val.metric, str(i)+"_"+key)
-
-		for key, fn in measures.items():
-			vs = [fn(i) for i in self.workers]
-
-			if len(vs) > 0:
-				best = max(vs)
-				worst = min(vs)
-				self.plot_progress.add_result(epoch, best, key+"_max")
-				self.plot_progress.add_result(epoch, worst, key+"_min")
-
-		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
-
-		steps = sum([i.performance[0] for i in self.workers])
-		time = sum([i.performance[1] for i in self.workers])
-
-		steps_per_min = steps / time * 60 if time > 0 else 0
-		self.plot_progress.add_result(epoch, steps_per_min, "steps_per_min")
-
-		best_worker = max(self.workers, key=self.score)
-
-		for key, val in best_worker.params.items():
-			if not isinstance(val, FixedParam):
-				if isinstance(val.metric, int) or isinstance(val.metric, float):
-					self.plot_progress.add_result(epoch, val.metric, key+"_best")
-
-		self.plot_progress.write()
-		self.plot_workers.write()
-		self.plot_hyper.write()
+	
 
 
 	def manage(self):
@@ -350,7 +352,7 @@ class Supervisor(object):
 				result_spec = pickle.loads(message.data)
 
 				if result_spec.group == self.args.group:
-					logger.info('Received result message: {}'.format(result_spec))
+					# logger.info('Received result message: {}'.format(result_spec))
 					for i in self.workers:
 						if i.id == result_spec.id:
 							if result_spec.success:
@@ -381,7 +383,7 @@ class Supervisor(object):
 				run_spec = pickle.loads(message.data)
 
 				if run_spec.group == self.args.group:
-					logger.info('Received run message: {}'.format(run_spec))
+					# logger.info('Received run message: {}'.format(run_spec))
 					
 					try:
 						worker = self.SubjectClass(self.init_params, self.hyperparam_spec)
@@ -406,8 +408,8 @@ class Supervisor(object):
 			message.nack()
 
 
-
-		subscriber = pubsub_v1.SubscriberClient()
+		from .google_pubsub_thread import Policy
+		subscriber = pubsub_v1.SubscriberClient(Policy)
 		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
 		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 

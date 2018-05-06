@@ -140,7 +140,9 @@ class Worker(object):
 		self.current_count += steps
 		self.total_count += steps
 		self.performance = (steps, time.time()-self.time_started)
+		self.time_started = 0
 		self.results = results
+
 
 	# --------------------------------------------------------------------------
 	# Load and save
