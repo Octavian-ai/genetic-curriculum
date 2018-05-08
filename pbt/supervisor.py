@@ -19,7 +19,7 @@ import signal
 
 from google.cloud import pubsub_v1
 
-from .param import FixedParam, FP
+from .param import FixedParam, FixedParamOf, FP
 from .specs import *
 
 from util import Ploty
@@ -77,17 +77,7 @@ class Supervisor(object):
 		self.heat = heat
 		self.save_freq = save_freq
 		self.save_counter = save_freq
-
-
-		assert "micro_step" in hyperparam_spec, "Hyperparameters must include micro_step"
-		assert "macro_step" in hyperparam_spec, "Hyperparameters must include macro_step"
-
-
-		# Function or Integer supported
-		if isinstance(n_workers, int) or isinstance(n_workers, float):
-			self.n_workers = lambda step: round(n_workers)
-		else:
-			self.n_workers = n_workers
+		self.n_workers = n_workers
 
 		self.fail_count = 0
 		self.workers = []
@@ -143,6 +133,17 @@ class Supervisor(object):
 		if len(self.workers) > 0 and self.workers[0].results is not None:
 			for key in self.workers[0].results.keys():
 				measures[key] = lambda i: i.results.get(key, -1)
+
+		def plot_param_metrics(plot, epoch, worker, prefix="", suffix=""):
+			for key, val in worker.params.items():
+				if not isinstance(val, FixedParam):
+					if isinstance(val.metric, int) or isinstance(val.metric, float):
+						plot.add_result(epoch, val.metric, prefix+key+suffix)
+					elif isinstance(val.metric, dict):
+						for mkey, mval in val.metric.items():
+							if isinstance(mval, int) or isinstance(mval, float):
+								plot.add_result(epoch, mval, prefix+key+"_"+mkey+suffix)
+
 		
 		for i, worker in enumerate(self.workers):
 
@@ -151,10 +152,7 @@ class Supervisor(object):
 			for key, fn in measures.items():
 				self.plot_hyper.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '--')
 
-			for key, val in worker.params.items():
-				if not isinstance(val, FixedParam):
-					if isinstance(val.metric, int) or isinstance(val.metric, float):
-						self.plot_hyper.add_result(epoch, val.metric, str(i)+"_"+key)
+			plot_param_metrics(self.plot_hyper, epoch, worker, str(i)+"_")
 
 		for key, fn in measures.items():
 			vs = [fn(i) for i in self.workers]
@@ -167,18 +165,14 @@ class Supervisor(object):
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
 
-		steps = sum([i.performance[0] for i in self.workers])
-		time = sum([i.performance[1] for i in self.workers])
-
-		steps_per_min = steps / time * 60 if time > 0 else 0
-		self.plot_progress.add_result(epoch, steps_per_min, "steps_per_min")
+		steps_per_sec = [
+			i.performance[0] / i.performance[1]
+			for i in self.workers if i.performance[1] > 0
+		]
+		self.plot_progress.add_result(epoch, sum(steps_per_sec), "steps_per_sec")
 
 		best_worker = max(self.workers, key=self.score)
-
-		for key, val in best_worker.params.items():
-			if not isinstance(val, FixedParam):
-				if isinstance(val.metric, int) or isinstance(val.metric, float):
-					self.plot_progress.add_result(epoch, val.metric, key+"_best")
+		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
 
 		self.plot_progress.write()
 		self.plot_workers.write()
@@ -187,7 +181,12 @@ class Supervisor(object):
 
 	def scale_workers(self, epoch):
 
-		delta = self.n_workers(epoch) - len(self.workers)
+		if isinstance(self.n_workers, int) or isinstance(self.n_workers, float):
+			target = round(self.n_workers)
+		else:
+			target = self.n_workers(epoch)
+
+		delta = target - len(self.workers)
 
 		if delta != 0:
 			logger.info("Resizing worker pool by {}".format(delta))
@@ -213,6 +212,12 @@ class Supervisor(object):
 		additional = self.SubjectClass(self.init_params, self.hyperparam_spec)
 		self.workers.append(additional)
 
+	def add_worker_from_params(self, params):
+		additional = self.SubjectClass(self.init_params, self.hyperparam_spec)
+		additional.params = params
+		self.workers.append(additional)
+
+
 	def breed_worker(self, worker):
 
 		score = self.score(worker)
@@ -234,14 +239,6 @@ class Supervisor(object):
 	
 
 
-
-	# TODO: Make params into a virtual dictionary (and wrap .value for the caller)
-	def params_equal(self, p1, p2):
-		for k, v in p1.items():
-			if v != p2[k]:
-				return False
-		return True
-
 	def __len__(self):
 		return len(self.workers)
 
@@ -256,8 +253,8 @@ class Supervisor(object):
 		self.plot_progress.add_result(epoch, self.fail_count, "failed_workers")
 
 
-	def single_step(self, worker):
-		steps = worker.params.get("micro_step", FP(1)).value
+	def single_worker_step(self, worker):
+		steps = worker.friendly_params.get("micro_step", 1)
 		logger.info("{}.train({})".format(worker.id, steps))
 		worker.step(steps)
 		logger.info("{}.eval()".format(worker.id))
@@ -266,7 +263,7 @@ class Supervisor(object):
 	def step_singlethreaded(self, epoch):
 		for i in self.workers:
 			try:
-				self.single_step(i)
+				self.single_worker_step(i)
 				
 			except Exception:
 				traceback.print_exc()
@@ -294,14 +291,17 @@ class Supervisor(object):
 			run_spec = RunSpec(i.id, i.params, self.args.group)
 			data = pickle.dumps(run_spec)
 			self.publisher.publish(self.run_topic_path, data=data)
-			print('{}.start()'.format(i.id))
+			logger.info('{}.start()'.format(i.id))
 
 		sleep(40)
 
 
 
 	def step(self, epoch):
-		self.step_distributed(epoch)
+		if self.args.single_threaded:
+			self.step_singlethreaded(epoch)
+		else:
+			self.step_distributed(epoch)
 
 	def exploit(self, epoch):
 		if len(self.workers) > 0:
@@ -344,33 +344,33 @@ class Supervisor(object):
 
 
 	def manage(self):
-		def result_callback(message):
 
-			try:
-				result_spec = pickle.loads(message.data)
+		if not self.args.single_threaded:
+			def result_callback(message):
+				try:
+					result_spec = pickle.loads(message.data)
 
-				if result_spec.group == self.args.group:
-					# logger.info('Received result message: {}'.format(result_spec))
-					for i in self.workers:
-						if i.id == result_spec.id:
-							if result_spec.success:
-								i.record_finish(self.args.micro_step, result_spec.results)
-								logger.info("{}.finish({})".format(result_spec.id, result_spec.results))
-							else:
-								self._remove_worker(i)
+					if result_spec.group == self.args.group:
+						# logger.info('Received result message: {}'.format(result_spec))
+						for i in self.workers:
+							if i.id == result_spec.id:
+								if result_spec.success:
+									i.record_finish(self.args.micro_step, result_spec.results)
+									logger.info("{}.finish({})".format(result_spec.id, result_spec.results))
+								else:
+									self._remove_worker(i)
 
-							message.ack()
-							return
+								message.ack()
+								return
+				except:
+					# Ok, that message wasn't for my codebase
+					pass
 
-			except:
-				# Ok, that message wasn't for my codebase
-				pass
+				message.nack()
 
-			message.nack()
-
-		subscriber = pubsub_v1.SubscriberClient()
-		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
-		subscriber.subscribe(result_subscription_path, callback=result_callback)
+			subscriber = pubsub_v1.SubscriberClient()
+			result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
+			subscriber.subscribe(result_subscription_path, callback=result_callback)
 
 		self.run()
 
@@ -388,7 +388,7 @@ class Supervisor(object):
 						worker.params = run_spec.params
 						worker.id = run_spec.id
 						message.ack() # training takes too long and the ack will miss its window
-						results = self.single_step(worker)
+						results = self.single_worker_step(worker)
 						result_spec = ResultSpec(run_spec.id, results, True, group=self.args.group)
 
 					except Exception as e:
@@ -424,7 +424,7 @@ class Supervisor(object):
 	def run(self, epochs=1000):
 		epoch = 0
 		while True:
-			# logger.info("Epoch {}".format(epoch))
+			logger.info("Epoch {}".format(epoch))
 			self.scale_workers(epoch)
 			self.step(epoch)
 			self.exploit(epoch)

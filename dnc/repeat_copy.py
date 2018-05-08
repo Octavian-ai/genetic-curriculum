@@ -26,7 +26,8 @@ DatasetTensors = collections.namedtuple('DatasetTensors', (
   'observations',
   'target', 
   'mask',
-  'length'
+  'length',
+  'total_targ_batch'
 ))
 
 
@@ -283,6 +284,8 @@ class RepeatCopy(snt.AbstractModule):
     max_length_batch = tf.reduce_max(total_length_batch)
     residual_length_batch = max_length_batch - total_length_batch
 
+    total_targ_batch = (sub_seq_length_batch * num_repeats_batch + 1) * full_targ_size
+
     obs_batch_shape = [max_length_batch, batch_size, full_obs_size]
     targ_batch_shape = [max_length_batch, batch_size, full_targ_size]
     mask_batch_trans_shape = [batch_size, max_length_batch]
@@ -381,7 +384,7 @@ class RepeatCopy(snt.AbstractModule):
     targ = tf.reshape(tf.concat(targ_tensors, 1), targ_batch_shape)
     mask = tf.transpose(
         tf.reshape(tf.concat(mask_tensors, 0), mask_batch_trans_shape))
-    return DatasetTensors(obs, targ, mask, total_length_batch)
+    return DatasetTensors(obs, targ, mask, total_length_batch, total_targ_batch)
 
   def cost(self, logits, targ, mask):
     return masked_sigmoid_cross_entropy(

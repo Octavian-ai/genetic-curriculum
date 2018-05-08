@@ -66,18 +66,21 @@ def model_fn(features, labels, mode, params):
 	# dataset_tensors_np, output_np = sess.run([dataset_tensors, output])
 	# dataset_string = dataset.to_human_readable(dataset_tensors_np, output_np)
 
-	masked_ouput = tf.nn.sigmoid(output_logits) * tf.expand_dims(labels["mask"],-1)
-	delta = tf.abs(masked_ouput - labels["target"])
+	output_sigmoid = tf.nn.sigmoid(output_logits)
+	delta = tf.abs(output_sigmoid - labels["target"])
 	tf.summary.histogram("delta", delta)
-	equality = tf.cast(delta < 0.1, tf.float32)
+	equality = tf.cast(delta < 0.1, tf.float32) * tf.expand_dims(labels["mask"],-1)
+
+	correct_elements = tf.reduce_mean(tf.reduce_sum(equality, [0,2]))
+	pct_correct = tf.reduce_mean(tf.reduce_sum(equality, [0,2]) / tf.cast(labels["total_targ_batch"], tf.float32))
 
 	eval_metric_ops = {
 		"accuracy_inbuilt": tf.metrics.accuracy(
-			masked_ouput, 
+			output_sigmoid, 
 			labels["target"]),
-		"accuracy": tf.metrics.mean(equality),
+		"accuracy": tf.metrics.mean(pct_correct),
 		"loss": tf.metrics.mean(train_loss),
-		"correct_elements": tf.metrics.mean(tf.reduce_sum(equality, [0,2]))
+		"correct_elements": tf.metrics.mean(correct_elements)
 	}
 
 	image_mask = tf.expand_dims(tf.expand_dims(labels["mask"],-1),-1)
@@ -86,20 +89,20 @@ def model_fn(features, labels, mode, params):
 		tf.nn.sigmoid_cross_entropy_with_logits(labels=labels["target"], logits=output_logits * tf.expand_dims(labels["mask"],-1)), -1)
 	
 	image = tf.concat([
-		tf.expand_dims(masked_ouput, -1), 
-		tf.expand_dims(labels["target"], -1),
-		tf.expand_dims(equality, -1),
-		xent / tf.reduce_max(xent)
-	], -2)
-	tf.summary.image("output_compare", image,32)
-
-
-	tf.summary.scalar("train_accuracy", tf.reduce_mean(equality))
+		# tf.expand_dims(output_logits, -1),
+		output_sigmoid, 
+		labels["target"],
+		# tf.expand_dims(equality, -1),
+		# xent / tf.reduce_max(xent)
+	], -1)
+	# tf summary image expects shape [batch_size, height, width, channels]
+	image = tf.transpose(image, perm=[1,0,2])
+	tf.summary.image("output_compare", tf.expand_dims(image, -1), 32)
+	
 	tf.summary.scalar("train_loss", tf.reduce_mean(train_loss))
-	tf.summary.scalar("correct_elements", tf.reduce_mean(tf.reduce_sum(equality, [0,2])))
-	tf.summary.histogram("length", labels["length"])
-	tf.summary.scalar("length", tf.reduce_mean(labels["length"]))
-
+	tf.summary.scalar("train_accuracy", pct_correct)
+	tf.summary.scalar("correct_elements", correct_elements)
+	tf.summary.scalar("total_elements", tf.reduce_mean(labels["total_targ_batch"], axis=-1))
 
 
 

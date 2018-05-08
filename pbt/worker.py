@@ -11,6 +11,8 @@ import sys
 import math
 import time
 
+# from comet_ml import Experiment
+
 from .params import Params
 
 import logging
@@ -24,14 +26,19 @@ class Worker(object):
 
 	"""
 	def __init__(self, init_params, hyperparam_spec):
-		self.total_count = 0
+		
+		# self.experiment = Experiment(api_key="bRptcjkrwOuba29GcyiNaGDbj")
 		self.id = uuid.uuid1()
-		self.results = {}
+		
 		self.init_params = init_params
+		self.params = hyperparam_spec.realize()
+
+		self.results = {}
+		self.total_count = 0
 		self.time_started = 0
 		self.performance = (0,0)
-		self.gen_params(hyperparam_spec)
 		self.reset_count()
+
 
 	
 	# --------------------------------------------------------------------------
@@ -52,11 +59,6 @@ class Worker(object):
 	# Parameter methods
 	# --------------------------------------------------------------------------
 
-	def gen_params(self, hyperparam_spec):
-		self.params = {
-			k: v() for k, v in hyperparam_spec.items()
-		}
-
 	@property
 	def params(self):
 		return self._params
@@ -64,6 +66,7 @@ class Worker(object):
 	@params.setter
 	def params(self, params):
 		self._params = params
+		# self.experiment.log_multiple_params(vars(self.friendly_params))
 
 	def explore(self, heat):
 		return {
@@ -107,13 +110,6 @@ class Worker(object):
 	# --------------------------------------------------------------------------
 	# Step and eval
 	# --------------------------------------------------------------------------
-	
-	@property
-	def macro_steps(self):
-		mi = self.friendly_params["micro_step"]
-		ma = self.friendly_params["macro_step"]
-		return self.total_count / mi / ma
-
 
 	def reset_count(self):
 		self.current_count = 0
@@ -126,12 +122,18 @@ class Worker(object):
 		
 		self.do_step(steps)
 
+		# self.experiment.set_step(self.total_count)
+
 		time_taken = time.time() - started
 		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
 
 
 	def eval(self):
 		self.results = self.do_eval()
+
+		# for key, value in self.results.items():
+			# self.experiment.log_metric(key, value)
+
 		return self.results
 
 

@@ -68,7 +68,12 @@ class DatasetParam(GeneticParam):
 
 	@property
 	def metric(self):
-		return self._get_var("length", max) * self._get_var("repeats", max)
+		return {
+			"min_length":  self._get_var("length",  min),
+			"max_length":  self._get_var("length",  max),
+			"min_repeats": self._get_var("repeats", min),
+			"max_repeats": self._get_var("repeats", max),
+		}
 
 
 def DatasetParamOf(batch_size):
@@ -76,16 +81,14 @@ def DatasetParamOf(batch_size):
 		return DatasetParam(batch_size, v)
 	return m
 
+
 def gen_param_spec(args):
-
-	return {
-		"macro_step": FixedParamOf(args.macro_step),
-		"micro_step": FixedParamOf(args.micro_step),
-
+	return ParamSpec({
 		"heritage": Heritage,
 		"model_id": ModelId,
 		"dataset": DatasetParamOf(args.batch_size),
-	}
+	})
+
 
 def gen_input_fn(is_eval=False):
 	def g(params):
@@ -99,6 +102,7 @@ def gen_input_fn(is_eval=False):
 					"target": dataset_tensors.target,
 					"mask": dataset_tensors.mask,
 					"length": dataset_tensors.length,
+					"total_targ_batch": dataset_tensors.total_targ_batch,
 				}
 			)
 
@@ -108,6 +112,8 @@ def gen_input_fn(is_eval=False):
 def gen_worker_init_params(args):
 	
 	p = {
+		"micro_step": args.micro_step,
+		"macro_step": args.macro_step,
 		"model_fn": model_fn, 
 		"train_input_fn": gen_input_fn(), 
 		"eval_input_fn":  gen_input_fn(True),

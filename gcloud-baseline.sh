@@ -1,6 +1,6 @@
 
 USER="dmack"
-JOB_NAME="genetic_curriculum_$(date +%Y%m%d_%H%M%S)"
+JOB_NAME="genetic_curriculum_baseline_$(date +%Y%m%d_%H%M%S)"
 BUCKET_NAME="octavian-training"
 REGION="us-central1"
 GCS_PATH="${BUCKET_NAME}/${JOB_NAME}"
@@ -20,5 +20,5 @@ gcloud ml-engine jobs submit training "$JOB_NAME" \
     --gcs-dir "$JOB_NAME" \
     --bucket "$BUCKET_NAME" \
     --model-dir "gs://${BUCKET_NAME}/${JOB_NAME}/checkpoint" \
-    --n-workers 15 \
+    --heat 0 \
     --group "$JOB_NAME"

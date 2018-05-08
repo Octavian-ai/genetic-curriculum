@@ -2,6 +2,7 @@
 
 import os
 import tensorflow as tf
+import json
 
 import logging
 logging.basicConfig()
@@ -35,15 +36,19 @@ def get_config():
 
 if __name__ == '__main__':
 
+	config = get_config()
+
+	if config is None:
+		logger.warn("No TF_CONFIG env var")
+		exit(-1)
+
+	logger.info("Job name {}".format(config[0]))
+
 	args = get_args()
 	supervisor = get_supervisor(args)
 
 	if args.load:
 		supervisor.load()
-
-	config = get_config()
-
-	logger.info("Job name {}".format(config[0]))
 
 	if config[0] == 'master':
 		supervisor.manage()

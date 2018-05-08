@@ -37,4 +37,6 @@ def get_args(args=None):
 	parser.add_argument('--disable-save',			action='store_false',dest="save")
 	parser.add_argument('--disable-load',			action='store_false',dest="load")
 
+	parser.add_argument('--n-baselines', 			type=int,  default=None)
+
 	return parser.parse_args(args)
