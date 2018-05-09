@@ -20,5 +20,5 @@ gcloud ml-engine jobs submit training "$JOB_NAME" \
     --gcs-dir "$JOB_NAME" \
     --bucket "$BUCKET_NAME" \
     --model-dir "gs://${BUCKET_NAME}/${JOB_NAME}/checkpoint" \
-    --n-workers 40 \
+    --n-workers 10 \
     --group "$JOB_NAME"

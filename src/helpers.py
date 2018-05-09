@@ -23,8 +23,8 @@ class DatasetParam(GeneticParam):
 
 		if self.v is None:
 			self.v = {
-				"length": RandIntRangeParamOf(1, 2)(),
-				"repeats": RandIntRangeParamOf(1, 5)(),
+				"length": RandIntRangeParamOf(1, 16)(),
+				"repeats": RandIntRangeParamOf(1, 16)(),
 			}
 
 

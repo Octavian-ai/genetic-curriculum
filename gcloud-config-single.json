@@ -1,0 +1,10 @@
+{
+  "trainingInput": {
+    "scaleTier": "CUSTOM",
+    "masterType": "complex_model_m",
+    "workerType": "complex_model_m",
+    "workerCount": 0,
+    "parameterServerType": "standard",
+    "parameterServerCount": 0
+  }
+}
