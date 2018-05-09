@@ -22,31 +22,20 @@ class DatasetParam(GeneticParam):
 		self.v = v
 
 		if self.v is None:
-			initial_max = 5
 			self.v = {
-				"min_length":  1,
-				"max_length":  1,
-				"min_repeats": 1,
-				"max_repeats": 1,
+				"length": RandIntRangeParamOf(1, 2)(),
+				"repeats": RandIntRangeParamOf(1, 5)(),
 			}
-			self.v = self._mutate_dict(1.0)
 
 
 	def _mutate_dict(self, heat):
 		return {
-			k: v + (random.paretovariate(3.0) * heat * random.choice([-1.0,1.0]))
-			for k, v in self.v.items()
+			k: val.mutate(heat)
+			for k, val in self.v.items()
 		}
 
 	def mutate(self, heat):
 		return type(self)(self.batch_size, self._mutate_dict(heat))
-
-	def _get_var(self, metric, fn):
-
-		def s(k):
-			return round(max(self.v[k], 1))
-
-		return fn(s("min_"+metric),s("max_"+metric))
 
 
 	@property
@@ -54,10 +43,7 @@ class DatasetParam(GeneticParam):
 		return repeat_copy.RepeatCopy(
 			num_bits=4, 
 			batch_size=self.batch_size, 
-			min_length =self._get_var("length",  min),
-			max_length =self._get_var("length",  max),
-			min_repeats=self._get_var("repeats", min),
-			max_repeats=self._get_var("repeats", max),
+			**self.metric
 		)
 
 	def __str__(self):
@@ -69,10 +55,10 @@ class DatasetParam(GeneticParam):
 	@property
 	def metric(self):
 		return {
-			"min_length":  self._get_var("length",  min),
-			"max_length":  self._get_var("length",  max),
-			"min_repeats": self._get_var("repeats", min),
-			"max_repeats": self._get_var("repeats", max),
+			"min_length":  self.v["length"].value[0],
+			"max_length":  self.v["length"].value[1],
+			"min_repeats": self.v["repeats"].value[0],
+			"max_repeats": self.v["repeats"].value[1],
 		}
 
 

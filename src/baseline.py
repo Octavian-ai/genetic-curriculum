@@ -22,10 +22,8 @@ if __name__ == "__main__":
 	for i in lengths:
 		for j in repetitions:
 			datasets.append(DatasetParam(args.batch_size, {
-				"min_length":  i,
-				"max_length":  i,
-				"min_repeats": j,
-				"max_repeats": j,
+				"length":  FixedParam([i,i]),
+				"repeats": FixedParam([j,j]),
 			}))
 
 	# datasets.reverse()

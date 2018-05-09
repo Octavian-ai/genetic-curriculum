@@ -4,4 +4,4 @@ python -m src.baseline --output-dir ./output_baseline  --model-dir ./output_base
 	--disable-load \
 	--single-threaded \
 	--group baseline \
-	--micro-step 100
+	--micro-step 300

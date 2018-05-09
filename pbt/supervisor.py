@@ -165,11 +165,11 @@ class Supervisor(object):
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
 
-		steps_per_sec = [
-			i.performance[0] / i.performance[1]
-			for i in self.workers if i.performance[1] > 0
-		]
-		self.plot_progress.add_result(epoch, sum(steps_per_sec), "steps_per_sec")
+		# steps_per_sec = [
+		# 	i.performance[0] / i.performance[1]
+		# 	for i in self.workers if i.performance[1] > 0
+		# ]
+		# self.plot_progress.add_result(epoch, sum(steps_per_sec), "steps_per_sec")
 
 		best_worker = max(self.workers, key=self.score)
 		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
@@ -293,7 +293,7 @@ class Supervisor(object):
 			self.publisher.publish(self.run_topic_path, data=data)
 			logger.info('{}.start()'.format(i.id))
 
-		sleep(40)
+		sleep(120)
 
 
 
@@ -401,24 +401,34 @@ class Supervisor(object):
 					return
 
 			except:
-				# Ok, that message wasn't for my codebase
+				# Message was from different version of the code or there are bugs in worker or those params just fail
+				# Swallow message, keep the channel tidy
+				# The supervisor will retry if that supervisor is still running
+				# Each group is expected to be running on one codebase
+
+				message.ack()
 				pass
 
 			message.nack()
 
 
-		from .google_pubsub_thread import Policy
-		subscriber = pubsub_v1.SubscriberClient(Policy)
-		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
-		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
-
-		subscriber.subscribe(run_subscription_path, 
-			callback=run_callback, 
-			flow_control=flow_control
-			)
-
+		# Hack because lib crashes
 		while True:
-			sleep(5)
+			try:
+				# Hack for single-threaded
+				from .google_pubsub_thread import Policy
+				subscriber = pubsub_v1.SubscriberClient(Policy)
+				run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
+				flow_control = pubsub_v1.types.FlowControl(max_messages=1)
+
+				s = subscriber.subscribe(run_subscription_path, 
+					callback=run_callback, 
+					flow_control=flow_control
+					)
+
+				s.future.result()
+			except Exception:
+				sleep(5)
 
 		
 	def run(self, epochs=1000):

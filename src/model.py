@@ -75,12 +75,10 @@ def model_fn(features, labels, mode, params):
 	pct_correct = tf.reduce_mean(tf.reduce_sum(equality, [0,2]) / tf.cast(labels["total_targ_batch"], tf.float32))
 
 	eval_metric_ops = {
-		"accuracy_inbuilt": tf.metrics.accuracy(
-			output_sigmoid, 
-			labels["target"]),
 		"accuracy": tf.metrics.mean(pct_correct),
 		"loss": tf.metrics.mean(train_loss),
-		"correct_elements": tf.metrics.mean(correct_elements)
+		"correct_elements": tf.metrics.mean(correct_elements),
+		"total_elements": tf.metrics.mean(tf.cast(labels["total_targ_batch"], tf.float32))
 	}
 
 	image_mask = tf.expand_dims(tf.expand_dims(labels["mask"],-1),-1)
@@ -97,7 +95,7 @@ def model_fn(features, labels, mode, params):
 	], -1)
 	# tf summary image expects shape [batch_size, height, width, channels]
 	image = tf.transpose(image, perm=[1,0,2])
-	tf.summary.image("output_compare", tf.expand_dims(image, -1), 32)
+	tf.summary.image("output_compare", tf.expand_dims(image, -1), 4)
 	
 	tf.summary.scalar("train_loss", tf.reduce_mean(train_loss))
 	tf.summary.scalar("train_accuracy", pct_correct)
