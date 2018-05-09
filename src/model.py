@@ -102,7 +102,8 @@ def model_fn(features, labels, mode, params):
 	tf.summary.scalar("correct_elements", correct_elements)
 	tf.summary.scalar("total_elements", tf.reduce_mean(labels["total_targ_batch"], axis=-1))
 
-
+	tf.summary.scalar("max_length", tf.convert_to_tensor(params["dataset"]._max_length))
+	tf.summary.scalar("max_repeats", tf.convert_to_tensor(params["dataset"]._max_repeats))
 
 	return tf.estimator.EstimatorSpec(
 		mode, 

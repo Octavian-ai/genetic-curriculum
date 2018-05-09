@@ -7,20 +7,23 @@ from .helpers import *
 
 if __name__ == "__main__":
 
+	total_steps = 12 * 1000
+
 	args = get_args()
 	args.macro_step = 9999999999999
+	args.micro_step = 300
 	args.heat = 0.0
 
-	lengths     = [pow(2,i) for i in range(1, 10)]
-	repetitions = [pow(2,i) for i in range(1, 10)]
+	lengths = [pow(2,i) for i in range(1, 6)]
+	repeats = [pow(2,i) for i in range(1, 6)]
 
-	lengths = [2]
-	repetitions = [5]
+	# lengths = [1]
+	# repetitions = [5]
 
 	datasets = []
 
 	for i in lengths:
-		for j in repetitions:
+		for j in repeats:
 			datasets.append(DatasetParam(args.batch_size, {
 				"length":  FixedParam([i,i]),
 				"repeats": FixedParam([j,j]),
@@ -39,4 +42,4 @@ if __name__ == "__main__":
 		params["dataset"] = i
 		s.add_worker_from_params(params)
 
-	s.run(args.epochs)
+	s.run(round(total_steps / args.micro_step))

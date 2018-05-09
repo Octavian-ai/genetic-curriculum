@@ -98,13 +98,10 @@ def gen_input_fn(is_eval=False):
 def gen_worker_init_params(args):
 	
 	p = {
-		"micro_step": args.micro_step,
-		"macro_step": args.macro_step,
 		"model_fn": model_fn, 
 		"train_input_fn": gen_input_fn(), 
 		"eval_input_fn":  gen_input_fn(True),
 		"eval_steps": 20,
-		"model_dir": args.model_dir,
 		"run_config": tf.estimator.RunConfig(save_checkpoints_steps=99999999999,save_checkpoints_secs=None)
 	}
 

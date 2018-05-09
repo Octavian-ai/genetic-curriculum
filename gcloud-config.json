@@ -3,7 +3,7 @@
     "scaleTier": "CUSTOM",
     "masterType": "standard",
     "workerType": "complex_model_m",
-    "workerCount": 10,
+    "workerCount": 4,
     "parameterServerType": "standard",
     "parameterServerCount": 0
   }

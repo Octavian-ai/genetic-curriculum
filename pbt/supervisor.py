@@ -445,9 +445,9 @@ class Supervisor(object):
 					self.save()
 
 			if len(self.workers) > 0:
-				oldest = max(self.workers, key=lambda w: w.total_count)
-				if oldest.total_count > epochs * self.args.micro_step:
-					logger.info("Training completed ({} epochs, oldest worker completed {} total steps)".format(epoch, oldest.total_count))
+				youngest = min(self.workers, key=lambda w: w.total_count)
+				if youngest.total_count > epochs * self.args.micro_step:
+					logger.info("Training completed ({} epochs, youngest worker completed {} total steps)".format(epoch, youngest.total_count))
 					break
 
 			epoch += 1

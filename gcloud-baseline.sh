@@ -8,7 +8,7 @@ PROJECT_ID=$(gcloud config list project --format "value(core.project)")
  
 gcloud ml-engine jobs submit training "$JOB_NAME" \
     --stream-logs \
-    --module-name src.cloudml \
+    --module-name src.baseline \
     --package-path src \
     --staging-bucket "gs://${BUCKET_NAME}" \
     --region "$REGION" \
@@ -20,5 +20,6 @@ gcloud ml-engine jobs submit training "$JOB_NAME" \
     --gcs-dir "$JOB_NAME" \
     --bucket "$BUCKET_NAME" \
     --model-dir "gs://${BUCKET_NAME}/${JOB_NAME}/checkpoint" \
-    --heat 0 \
-    --group "$JOB_NAME"
+    --group "$JOB_NAME" \
+    --single-threaded \
+    --epochs 1 \
