@@ -84,6 +84,8 @@ class Supervisor(object):
 		self.plot_workers  = Ploty(args, title='Worker performance', x='Time', y="Score")
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
 		self.plot_hyper    = Ploty(args, title='Hyper parameters', x='Time', y="Value")
+		self.time_last_print_status = 0
+		self.print_count = 0
 
 		self.publisher = pubsub_v1.PublisherClient()
 		self.run_topic_path = self.publisher.topic_path(self.args.project, "pbt_run")
@@ -123,6 +125,12 @@ class Supervisor(object):
 
 			except Exception as e:
 				print(e)
+
+	def try_print_status(self, epoch):
+		if time.time() - self.time_last_print_status > 60:
+			self.print_status(self.print_count)
+			self.time_last_print_status = time.time()
+			self.print_count += 1
 
 	def print_status(self, epoch):
 
@@ -264,6 +272,7 @@ class Supervisor(object):
 		for i in self.workers:
 			try:
 				self.single_worker_step(i)
+				self.try_print_status(epoch)
 				
 			except Exception:
 				traceback.print_exc()
@@ -438,7 +447,7 @@ class Supervisor(object):
 			self.scale_workers(epoch)
 			self.step(epoch)
 			self.exploit(epoch)
-			self.print_status(epoch)
+			self.try_print_status(epoch)
 
 			if self.args.save:
 				if epoch % self.save_freq == self.save_freq-1:
@@ -446,7 +455,7 @@ class Supervisor(object):
 
 			if len(self.workers) > 0:
 				youngest = min(self.workers, key=lambda w: w.total_count)
-				if youngest.total_count > epochs * self.args.micro_step:
+				if youngest.total_count >= epochs * self.args.micro_step:
 					logger.info("Training completed ({} epochs, youngest worker completed {} total steps)".format(epoch, youngest.total_count))
 					break
 

@@ -7,11 +7,11 @@ from .helpers import *
 
 if __name__ == "__main__":
 
-	total_steps = 12 * 1000
+	total_steps = 10 * 1000
 
 	args = get_args()
 	args.macro_step = 9999999999999
-	args.micro_step = 300
+	args.micro_step = total_steps
 	args.heat = 0.0
 
 	lengths = [pow(2,i) for i in range(1, 6)]
