@@ -4,6 +4,7 @@
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 from http import HTTPStatus
+import platform
 
 class MyHandler(BaseHTTPRequestHandler):
 
@@ -11,7 +12,7 @@ class MyHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header('Content-type', 'text/json')
         self.end_headers()
-        self.wfile.write(b'{"name":"Davids-MacBook-Pro-2.local"}')
+        self.wfile.write('{{"name":"{}"}}'.format(platform.node()).encode('utf-8'))
         return
 
 

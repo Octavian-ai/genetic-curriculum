@@ -48,15 +48,17 @@ class Params(object):
 		return r
 
 
+class Mutateable(dict):
+	def mutate(self, heat):
+		return type(self)({
+			k: v.mutate(heat) for k, v in self.items()
+		})
 
-class ParamSpec(object):
-	def __init__(self, spec):
-		self.spec = spec
-
-	def __setitem__(self, key, value):
-		self.spec[key] = value
-
+class ParamSpec(dict):
 	def realize(self):
-		return {
-			k: v() for k, v in self.spec.items()
-		}
+		return Mutateable({
+			k: v() for k, v in self.items()
+		})
+
+
+

@@ -177,7 +177,7 @@ class Supervisor(object):
 
 
 	def consider_exploit(self, worker):
-		if worker.recent_steps > self.args.micro_step * self.args.macro_step:
+		if worker.recent_steps >= self.args.micro_step * self.args.macro_step:
 
 			stack = list(self.workers.values())
 			stack.sort(key=self.score)
@@ -186,6 +186,7 @@ class Supervisor(object):
 			if idx < max(len(stack) * self.args.exploit_pct,1):
 				try:
 					mentor = self.get_mentor()
+					logger.info("{}.mutate()".format(worker.id))
 					worker.params = mentor.params.mutate(self.args.heat)
 				except ValueError:
 					pass

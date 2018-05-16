@@ -49,9 +49,9 @@ if __name__ == "__main__":
 			manager = None
 
 		drone.ensure_running()
-		manager.ensure_running()
 
 		if manager is not None:
+			manager.ensure_running()
 			manager.run_epoch()
 
 		time.sleep(args.sleep_per_cycle)
