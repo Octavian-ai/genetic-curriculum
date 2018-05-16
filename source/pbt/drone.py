@@ -26,16 +26,13 @@ class Drone(object):
 	def _handle_message(self, message):
 		try:
 			run_spec = pickle.loads(message.data)
-			logger.info(str(run_spec))
-
+			
 			if isinstance(run_spec, RunSpec):
 				if run_spec.group != self.args.group:
 					message.nack()
 					return
 				else:
 					if time.time() - run_spec.time_sent < self.args.message_timeout:
-						logger.info('Received run message: {}'.format(run_spec))
-						
 						try:
 							if run_spec.id in self.worker_cache:
 								worker = self.worker_cache[run_spec.id]

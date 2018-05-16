@@ -95,7 +95,7 @@ class Supervisor(object):
 		
 		for i, worker in self.workers.items():
 
-			self.plot_workers.add_result(epoch, self.score(worker),  str(i)+"_score")
+			self.plot_workers.add_result(epoch, self.score(worker),  str(i))
 
 			for key, fn in measures.items():
 				self.plot_hyper.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '--')
@@ -103,7 +103,7 @@ class Supervisor(object):
 			plot_param_metrics(self.plot_hyper, epoch, worker, str(i)+"_")
 
 		for key, fn in measures.items():
-			vs = [fn(i) for i in self.workers]
+			vs = [fn(i) for i in self.workers.values()]
 
 			if len(vs) > 0:
 				best = max(vs)
@@ -119,7 +119,7 @@ class Supervisor(object):
 		# ]
 		# self.plot_progress.add_result(epoch, sum(steps_per_sec), "steps_per_sec")
 
-		best_worker = max(self.workers.items(), key=self.score)
+		best_worker = max(self.workers.values(), key=self.score)
 		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
 
 		self.plot_progress.write()
@@ -156,7 +156,7 @@ class Supervisor(object):
 		top20 = [i for i in top20 if i.results is not None]
 
 		if len(top20) > 0:
-			return random.choose(top20)
+			return random.choice(top20)
 
 		raise ValueError("No top workers have results yet")
 			
@@ -217,28 +217,37 @@ class Supervisor(object):
 	def _handle_result(self, message):
 		try:
 			result_spec = pickle.loads(message.data)
-			logger.info("{}.results = {}".format(result_spec.id, result_spec.results))
-
+			
 			if isinstance(result_spec, ResultSpec):
 				if result_spec.group != self.args.group:
+					# logger.info("Message for another group")
 					message.nack()
 					return
 				else:
 					if time.time() - result_spec.time_sent < self.args.message_timeout:
-						for i in self.workers:
-							if i.id == result_spec.id:
-								if result_spec.success:
-									i.record_result(result_spec)
-									logger.info("{}.finish({})".format(result_spec.id, result_spec.results))
-									self.consider_exploit(i)
-									self.dispatch(i)
-								else:
-									del self.workers[result_spec.id]
-									self.add_worker()
 
-								message.ack()
-								return
-		except Exception:
+						if result_spec.id in self.workers:
+							i = self.workers[result_spec.id]
+
+							if result_spec.success:
+								i.record_result(result_spec)
+								logger.info("{}.record_result({})".format(result_spec.id, result_spec.results))
+								self.consider_exploit(i)
+								self.dispatch(i)
+							else:
+								logger.info("{}.delete()".format(result_spec.id))
+								del self.workers[result_spec.id]
+								self.add_worker()
+
+							message.ack()
+							return
+
+						else:
+							logger.warning("{} worker not found for message {}".format(result_spec.id, result_spec))
+					else:
+						logger.warning("Message timeout")
+
+		except pickle.UnpicklingError as ex:
 			# Ok, that message wasn't for my codebase
 			pass
 
