@@ -109,14 +109,19 @@ def gen_worker_init_params(args):
 
 	return p
 
+def get_drone(args):
+	return Drone(args, SingularSessionWorker, gen_worker_init_params(args))
+
 
 def score(worker):
-	return worker.results.get("correct_elements", -1)
+	try:
+		return worker.results["correct_elements"]
+	except Exception:
+		return -1
 
 
-def get_supervisor(args):
-
-	s = Supervisor(
+def get_supervisor_old(args):
+	return Supervisor(
 		args,
 		SingularSessionWorker, 
 		gen_worker_init_params(args), 
@@ -125,7 +130,8 @@ def get_supervisor(args):
 		n_workers=args.n_workers,
 		heat=args.heat)
 
-	return s
+def get_supervisor(args):
+	return Supervisor(args, gen_param_spec(args), score)
 
 
 

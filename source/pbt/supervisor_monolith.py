@@ -28,7 +28,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Supervisor(object):
+class SupervisorMonolith(object):
 	"""
 		Implementation of Population Based Training. 
 		Supervisor manages and optimises the experiments
@@ -80,6 +80,7 @@ class Supervisor(object):
 		self.n_workers = n_workers
 
 		self.fail_count = 0
+		self.epoch = 0
 		self.workers = []
 		self.plot_workers  = Ploty(args, title='Worker performance', x='Time', y="Score")
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
@@ -217,12 +218,11 @@ class Supervisor(object):
 				self.add_random_worker()
 
 	def add_random_worker(self):
-		additional = self.SubjectClass(self.init_params, self.hyperparam_spec)
+		additional = self.SubjectClass(self.init_params, self.hyperparam_spec.realize())
 		self.workers.append(additional)
 
 	def add_worker_from_params(self, params):
-		additional = self.SubjectClass(self.init_params, self.hyperparam_spec)
-		additional.params = params
+		additional = self.SubjectClass(self.init_params, params)
 		self.workers.append(additional)
 
 
@@ -239,8 +239,7 @@ class Supervisor(object):
 			k: v.breed(ap[k], bp[k], self.heat) for k, v in self.hyperparam_spec.items()
 		}
 
-		child = self.SubjectClass(self.init_params, self.hyperparam_spec)
-		child.params = params
+		child = self.SubjectClass(self.init_params, params)
 		self.workers.append(child)
 		return child
 
@@ -261,17 +260,10 @@ class Supervisor(object):
 		self.plot_progress.add_result(epoch, self.fail_count, "failed_workers")
 
 
-	def single_worker_step(self, worker):
-		steps = worker.friendly_params.get("micro_step", 1)
-		logger.info("{}.train({})".format(worker.id, steps))
-		worker.step(steps)
-		logger.info("{}.eval()".format(worker.id))
-		return worker.eval()
-
 	def step_singlethreaded(self, epoch):
 		for i in self.workers:
 			try:
-				self.single_worker_step(i)
+				i.step_and_eval()
 				self.try_print_status(epoch)
 				
 			except Exception:
@@ -383,82 +375,31 @@ class Supervisor(object):
 
 		self.run()
 
-	def drone(self):
-		
-		def run_callback(message):
-			try:
-				run_spec = pickle.loads(message.data)
 
-				if run_spec.group == self.args.group:
-					logger.info('Received run message: {}'.format(run_spec))
-					
-					try:
-						worker = self.SubjectClass(self.init_params, self.hyperparam_spec)
-						worker.params = run_spec.params
-						worker.id = run_spec.id
-						message.ack() # training takes too long and the ack will miss its window
-						results = self.single_worker_step(worker)
-						result_spec = ResultSpec(run_spec.id, results, True, group=self.args.group)
+	def run_single_epoch(self):
+		epoch = self.epoch
+		logger.info("Epoch {}".format(epoch))
+		self.scale_workers(epoch)
+		self.step(epoch)
+		self.exploit(epoch)
+		self.try_print_status(epoch)
 
-					except Exception as e:
-						traceback.print_exc()
-						result_spec = ResultSpec(run_spec.id, None, False, group=self.args.group)
+		if self.args.save:
+			if epoch % self.save_freq == self.save_freq-1:
+				self.save()
 
-					data = pickle.dumps(result_spec)
-					self.publisher.publish(self.result_topic_path, data=data)
-					
-					return
+		self.epoch += 1
 
-			except:
-				# Message was from different version of the code or there are bugs in worker or those params just fail
-				# Swallow message, keep the channel tidy
-				# The supervisor will retry if that supervisor is still running
-				# Each group is expected to be running on one codebase
-
-				message.ack()
-				pass
-
-			message.nack()
-
-
-		# Hack because lib crashes
-		while True:
-			try:
-				# Hack for single-threaded
-				from .google_pubsub_thread import Policy
-				subscriber = pubsub_v1.SubscriberClient(Policy)
-				run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
-				flow_control = pubsub_v1.types.FlowControl(max_messages=1)
-
-				s = subscriber.subscribe(run_subscription_path, 
-					callback=run_callback, 
-					flow_control=flow_control
-					)
-
-				s.future.result()
-			except Exception:
-				sleep(5)
 
 		
 	def run(self, epochs=1000):
-		epoch = 0
 		while True:
-			logger.info("Epoch {}".format(epoch))
-			self.scale_workers(epoch)
-			self.step(epoch)
-			self.exploit(epoch)
-			self.try_print_status(epoch)
-
-			if self.args.save:
-				if epoch % self.save_freq == self.save_freq-1:
-					self.save()
-
+			self.run_single_epoch()
+			
 			if len(self.workers) > 0:
 				youngest = min(self.workers, key=lambda w: w.total_count)
 				if youngest.total_count >= epochs * self.args.micro_step:
 					logger.info("Training completed ({} epochs, youngest worker completed {} total steps)".format(epoch, youngest.total_count))
 					break
-
-			epoch += 1
 
 			

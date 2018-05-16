@@ -11,10 +11,3 @@ name = "pypi"
 
 [packages]
 
-tensorflow = "==1.6"
-numpy = "*"
-google-cloud = "*"
-dm-sonnet = "*"
-matplotlib = "*"
-floyd-cli = "*"
-google-cloud-pubsub = "*"

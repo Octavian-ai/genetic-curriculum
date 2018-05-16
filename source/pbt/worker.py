@@ -25,13 +25,13 @@ class Worker(object):
 	Always provide a parameterless init so the Supervisor can spawn workers as needed
 
 	"""
-	def __init__(self, init_params, hyperparam_spec):
+	def __init__(self, init_params, params):
 		
 		# self.experiment = Experiment(api_key="bRptcjkrwOuba29GcyiNaGDbj")
 		self.id = uuid.uuid1()
 		
 		self.init_params = init_params
-		self.params = hyperparam_spec.realize()
+		self.params = params
 
 		self.results = {}
 		self.total_count = 0
@@ -122,8 +122,6 @@ class Worker(object):
 		
 		self.do_step(steps)
 
-		# self.experiment.set_step(self.total_count)
-
 		time_taken = time.time() - started
 		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
 
@@ -131,11 +129,14 @@ class Worker(object):
 	def eval(self):
 		self.results = self.do_eval()
 
-		# for key, value in self.results.items():
-			# self.experiment.log_metric(key, value)
-
 		return self.results
 
+
+	def step_and_eval(self, steps):
+		logger.info("{}.train({})".format(self.id, steps))
+		self.step(steps)
+		logger.info("{}.eval()".format(self.id))
+		return self.eval()
 
 	# --------------------------------------------------------------------------
 	# Multi-process sync
@@ -168,6 +169,5 @@ class Worker(object):
 		w.init_params = init_params
 		w.reset_count()
 		return w
-
 
 	 

@@ -1,6 +1,8 @@
 
 from .worker import Worker
+# from .supervisor import Supervisor
 from .supervisor import Supervisor
+from .drone import Drone
 from .param import *
 from .params import *
 from .schedule import *
