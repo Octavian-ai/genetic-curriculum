@@ -78,7 +78,7 @@ class Supervisor(object):
 		try:
 			random_worker = random.choice(list(self.workers.values()))
 			for key in random_worker.results.keys():
-				measures[key] = lambda i: i.results.get(key, -1)
+				measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
 		except Exception:
 			pass
 
@@ -173,7 +173,13 @@ class Supervisor(object):
 		newbie = WorkerHeader(params)
 		self.workers[newbie.id] = newbie
 		self.dispatch(newbie)
-	
+
+
+	def remove_worker(self):
+		if len(self.workers) > 0:
+			stack = list(self.workers.values())
+			stack.sort(key=self.score)
+			del self.workers[stack[0].id]	
 
 
 	def consider_exploit(self, worker):

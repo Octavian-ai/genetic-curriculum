@@ -5,6 +5,6 @@ RUN pip install pipenv
 
 ADD source /source
 WORKDIR /source
-RUN pipenv install --verbose
+RUN pipenv install --verbose --skip-lock
 
 CMD "/usr/local/bin/pipenv run python -m experiment.k8"
