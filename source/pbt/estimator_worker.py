@@ -76,9 +76,9 @@ class EstimatorWorker(Worker):
     self.use_warm_start = True
 
     if self.use_warm_start:
-      assert("model_id" in hyperparam_spec, "Warm start requires model_id hyperparam")
+      assert "model_id" in hyperparam_spec, "Warm start requires model_id hyperparam"
     else:
-      assert("vars" in hyperparam_spec, "Cold start requires vars hyperparam")
+      assert "vars" in hyperparam_spec, "Cold start requires vars hyperparam"
 
     super().__init__(init_params, hyperparam_spec)
 
