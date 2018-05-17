@@ -7,4 +7,4 @@ ADD source /source
 WORKDIR /source
 RUN pipenv install --verbose --skip-lock
 
-CMD ["pipenv", "run", "python -m experiment.k8"]
+CMD "pipenv run python -m experiment.k8"
