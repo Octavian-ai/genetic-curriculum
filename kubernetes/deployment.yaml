@@ -1,29 +1,54 @@
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: pbt-deployment
+  annotations:
+    deployment.kubernetes.io/revision: "6"
+  creationTimestamp: 2018-05-17T20:38:47Z
+  generation: 9
+  labels:
+    app: pbt
+  name: pbt
+  namespace: default
+  resourceVersion: "123521"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt
+  uid: 4ca72a98-5a12-11e8-8721-42010a8a016f
 spec:
+  replicas: 2
   selector:
     matchLabels:
-      app: coop
-  replicas: 4 # tells deployment to run 2 pods matching the template
-  template: # create pods using pod definition in this template
+      app: pbt
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
     metadata:
-      # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
-      # generated from the deployment name
+      creationTimestamp: null
       labels:
-        app: coop
+        app: pbt
     spec:
       containers:
-      - name: worker
-        image: gcr.io/octavian-181621/genetic-curriculum
-
-      - name: elector
+      - image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum:master
+        imagePullPolicy: IfNotPresent
+        name: github-octavian-ai-genetic-curriculum
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      - args:
+        - --election=monolith-jobs
+        - --http=localhost:4040
         image: gcr.io/google_containers/leader-elector:0.4
         imagePullPolicy: IfNotPresent
-        args:
-          - --election=monolith-jobs
-          - --http=localhost:4040
+        name: leader-elector
         ports:
-          - containerPort: 4040
-            protocol: TCP
+        - containerPort: 4040
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

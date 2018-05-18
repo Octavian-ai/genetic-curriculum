@@ -3,8 +3,11 @@ FROM gcr.io/google-appengine/python
 RUN pip install --upgrade pip
 RUN pip install pipenv
 
-ADD source /source
 WORKDIR /source
+
+COPY source/Pipfile .
 RUN pipenv install --verbose --skip-lock
 
-CMD "pipenv run python -m experiment.k8"
+COPY source .
+
+CMD "./run.sh"
