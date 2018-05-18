@@ -2,18 +2,18 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    deployment.kubernetes.io/revision: "6"
+    deployment.kubernetes.io/revision: "8"
   creationTimestamp: 2018-05-17T20:38:47Z
-  generation: 9
+  generation: 16
   labels:
     app: pbt
   name: pbt
   namespace: default
-  resourceVersion: "123521"
+  resourceVersion: "143657"
   selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt
   uid: 4ca72a98-5a12-11e8-8721-42010a8a016f
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: pbt
@@ -29,8 +29,14 @@ spec:
         app: pbt
     spec:
       containers:
-      - image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum:master
-        imagePullPolicy: IfNotPresent
+      - args:
+        - --gcs-dir k8
+        - --bucket octavian-training
+        - --model-dir gs://octavian-training/k8/checkpoint
+        - --n-workers 10
+        - --group k8
+        image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum:master
+        imagePullPolicy: Always
         name: github-octavian-ai-genetic-curriculum
         resources: {}
         terminationMessagePath: /dev/termination-log
