@@ -35,6 +35,7 @@ if __name__ == "__main__":
 	manager = None
 	drone = None
 
+	logger.info("Start drone")
 	drone = get_drone(args)
 
 	while True:
@@ -42,9 +43,11 @@ if __name__ == "__main__":
 		leader = i_am_leader(args)
 
 		if manager is None and leader:
+			logger.info("Start supervisor")
 			manager = get_supervisor(args)
 
 		if manager is not None and not leader:
+			logger.info("Stop supervisor")
 			manager.close()
 			manager = None
 
