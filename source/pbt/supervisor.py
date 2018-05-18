@@ -216,7 +216,7 @@ class Supervisor(object):
 	def subscribe(self):
 		subscriber = pubsub_v1.SubscriberClient()
 		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
-		logger.info("Subscribing to {}".format(result_subscription_path))
+		logger.info("Subscribing to {} {}".format(result_subscription_path, self.args.group))
 		self.subscription = subscriber.subscribe(result_subscription_path, callback=lambda message:self._handle_result(message))
 		return self.subscription
 

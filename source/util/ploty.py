@@ -53,7 +53,7 @@ class Ploty(object):
     self.clear_screen = clear_screen
     self.legend = legend
     self.terminal = terminal
-    self.floyd = False
+    self.floyd = args.floyd_metrics
 
     self.header = ["x", "y", "label"]
     self.datas = {}
