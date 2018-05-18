@@ -29,13 +29,7 @@ spec:
         app: pbt
     spec:
       containers:
-      - args:
-        - --gcs-dir k8
-        - --bucket octavian-training
-        - --model-dir gs://octavian-training/k8/checkpoint
-        - --n-workers 10
-        - --group k8
-        image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum:master
+      - image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum:master
         imagePullPolicy: Always
         name: github-octavian-ai-genetic-curriculum
         resources: {}

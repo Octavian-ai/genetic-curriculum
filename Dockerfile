@@ -10,4 +10,4 @@ RUN pipenv install --verbose --skip-lock
 
 COPY source .
 
-CMD "./run.sh"
+CMD "./run-k8.sh"
