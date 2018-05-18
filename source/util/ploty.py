@@ -33,7 +33,7 @@ except ImportError as e:
   pass
 
 
-from .writer import FileWritey
+from .file import FileWritey
 
 class Ploty(object):
 

@@ -1,3 +1,3 @@
 
 from .ploty import Ploty
-from .writer import FileWritey
+from .file import FileWritey, FileReady

@@ -2,14 +2,14 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    deployment.kubernetes.io/revision: "8"
+    deployment.kubernetes.io/revision: "11"
   creationTimestamp: 2018-05-17T20:38:47Z
-  generation: 16
+  generation: 25
   labels:
     app: pbt
   name: pbt
   namespace: default
-  resourceVersion: "143657"
+  resourceVersion: "154391"
   selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt
   uid: 4ca72a98-5a12-11e8-8721-42010a8a016f
 spec:
@@ -19,8 +19,8 @@ spec:
       app: pbt
   strategy:
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
+      maxSurge: 0
+      maxUnavailable: 100%
     type: RollingUpdate
   template:
     metadata:
@@ -29,7 +29,7 @@ spec:
         app: pbt
     spec:
       containers:
-      - image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum:master
+      - image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum
         imagePullPolicy: Always
         name: github-octavian-ai-genetic-curriculum
         resources: {}

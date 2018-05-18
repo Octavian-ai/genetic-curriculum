@@ -14,6 +14,7 @@ from util import Ploty
 
 from .specs import *
 from .param import FixedParam
+from util import FileWritey, FileReady
 
 class Supervisor(object):
 
@@ -48,11 +49,12 @@ class Supervisor(object):
 		logger.info("Trying to load workers from " + self.file_path)
 	
 		try:
-			with open(self.file_path, 'rb') as file:
+			with FileReady(self.args, "workers.pkl", True) as file:
 				self.workers = pickle.load(file)
 				
 		except FileNotFoundError:
 			self.workers = {}
+
 
 		self.time_last_save = time.time()
 
@@ -63,7 +65,9 @@ class Supervisor(object):
 		except:
 			pass
 
-		with open(self.file_path, 'wb') as file:
+		logger.info("Saving workers to " + self.file_path)
+
+		with FileWritey(self.args, "workers.pkl", True) as file:
 			pickle.dump(self.workers, file)
 
 		self.time_last_save = time.time()

@@ -16,3 +16,11 @@ To test:
 ```shell
 ./test.sh
 ```
+
+
+## Deploying to Kubernetes
+
+```
+kubectl create serviceaccount default --namespace default
+kubectl create clusterrolebinding default-cluster-rule --clusterrole=cluster-admin --serviceaccount=default:default
+```
