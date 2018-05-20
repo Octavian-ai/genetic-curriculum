@@ -23,7 +23,7 @@ def get_args(args=None):
 	parser.add_argument('--batch-size', 			type=int,  default=32)
 	parser.add_argument('--n-workers', 				type=int,  default=15)
 	parser.add_argument('--job-timeout', 			type=int,  default=60*10)
-	parser.add_argument('--message-timeout', 		type=int,  default=60*10)
+	parser.add_argument('--message-timeout', 		type=int,  default=60*5)
 	parser.add_argument('--sleep-per-cycle', 		type=int,  default=10)
 	parser.add_argument('--save-secs', 				type=int,  default=60*5)
 	parser.add_argument('--print-secs', 			type=int,  default=60*5)

@@ -36,30 +36,34 @@ class Drone(object):
 		
 		data = pickle.dumps(result_spec)
 		self.publisher.publish(self.result_topic_path, data=data)
+		logger.info("{}.send_result({})".format(worker.id, result_spec))
 
 
 	def _handle_message(self, message):
+
 		try:
 			run_spec = pickle.loads(message.data)
 			
 			if isinstance(run_spec, RunSpec):
-				if run_spec.group != self.args.group:
-					message.nack()
-					return
-				else:
-					if time.time() - run_spec.time_sent < self.args.message_timeout:
+				if time.time() - run_spec.time_sent < self.args.message_timeout:
+					if run_spec.group != self.args.group:
+						message.nack()
+						return
+					else:
+						# logger.info("Received message {}".format(run_spec))
+
+						if run_spec.id in self.worker_cache:
+							worker = self.worker_cache[run_spec.id]
+						else:
+							worker = self.SubjectClass(self.init_params, run_spec.params)
+							worker.id = run_spec.id
+							self.worker_cache[run_spec.id] = worker
+
+						worker.update_from_run_spec(run_spec)
+						message.ack() # training takes too long and the ack will miss its window
+
 						try:
-							if run_spec.id in self.worker_cache:
-								worker = self.worker_cache[run_spec.id]
-							else:
-								worker = self.SubjectClass(self.init_params, run_spec.params)
-								worker.id = run_spec.id
-								self.worker_cache[run_spec.id] = worker
-
-							worker.update_from_run_spec(run_spec)
-
-							message.ack() # training takes too long and the ack will miss its window
-							logger.info("{}.step_and_eval()".format(run_spec.id))
+							logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
 							for i in range(run_spec.macro_step):
 								worker.step_and_eval(run_spec.micro_step)
 								self._send_result(run_spec, worker, True)
@@ -69,9 +73,14 @@ class Drone(object):
 							self._send_result(run_spec, worker, False)
 						
 						return
+				else:
+					logger.debug("Timed out message")
+			else:
+				logger.debug("Received non RunSpec {}".format(run_spec))
 
 		except pickle.UnpicklingError as ex:
-			traceback.print_exc()
+			# traceback.print_exc()
+			pass
 
 
 		# Swallow bad messages
@@ -83,7 +92,7 @@ class Drone(object):
 		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
 		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 
-		logger.info("Subscribing to {} {}".format(run_subscription_path, self.args.group))
+		logger.debug("Subscribing to {} {}".format(run_subscription_path, self.args.group))
 
 		self.subscription = subscriber.subscribe(run_subscription_path, 
 			callback=lambda message: self._handle_message(message), 

@@ -73,7 +73,7 @@ class Supervisor(object):
 			pickle.dump(self.workers, file)
 
 		with FileWritey(self.args, "workers.yaml", False) as file:
-			file.write(yaml.dump(self.workers))
+			yaml.dump(self.workers, file)
 			
 		self.time_last_save = time.time()
 
@@ -175,6 +175,7 @@ class Supervisor(object):
 		try:
 			mentor = self.get_mentor()
 			params = mentor.params.mutate(self.args.heat)
+			logger.info("new worker from {}.mutate()".format(mentor.id))
 
 		except ValueError:
 			params = self.param_spec.realize()
@@ -199,12 +200,10 @@ class Supervisor(object):
 			idx = stack.index(worker)
 
 			if idx < max(len(stack) * self.args.exploit_pct,1):
-				try:
-					mentor = self.get_mentor()
-					logger.info("{}.mutate()".format(worker.id))
-					worker.params = mentor.params.mutate(self.args.heat)
-				except ValueError:
-					pass
+				del self.workers[worker.id]
+				logger.info("del {}".format(worker.id))
+				self.add_worker()
+			
 
 			worker.recent_steps = 0
 
@@ -212,7 +211,6 @@ class Supervisor(object):
 	def dispatch(self, worker):
 		"""Request drone runs this worker"""
 		run_spec = worker.gen_run_spec(self.args)
-
 		data = pickle.dumps(run_spec)
 		self.publisher.publish(self.run_topic_path, data=data)
 		logger.info('{}.dispatch()'.format(worker.id))
@@ -226,7 +224,7 @@ class Supervisor(object):
 	def subscribe(self):
 		subscriber = pubsub_v1.SubscriberClient()
 		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
-		logger.info("Subscribing to {} {}".format(result_subscription_path, self.args.group))
+		logger.debug("Subscribing to {} {}".format(result_subscription_path, self.args.group))
 		self.subscription = subscriber.subscribe(result_subscription_path, callback=lambda message:self._handle_result(message))
 		return self.subscription
 
@@ -237,30 +235,30 @@ class Supervisor(object):
 			
 			if isinstance(result_spec, ResultSpec):
 				if result_spec.group != self.args.group:
-					# logger.info("Message for another group")
 					message.nack()
 					return
 				else:
 					if time.time() - result_spec.time_sent < self.args.message_timeout:
-
 						if result_spec.id in self.workers:
 							i = self.workers[result_spec.id]
 
-							if result_spec.success:
-								i.update_from_result_spec(result_spec)
-								logger.info("{}.record_result({})".format(result_spec.id, result_spec.results))
-								self.consider_exploit(i)
-								self.dispatch(i)
+							if result_spec.total_steps >= i.total_steps:
+								if result_spec.success:
+									i.update_from_result_spec(result_spec)
+									logger.info("{}.record_result({})".format(result_spec.id, result_spec))
+									self.consider_exploit(i)
+								else:
+									logger.info("del {}".format(result_spec.id))
+									del self.workers[result_spec.id]
+									self.add_worker()
+
+								message.ack()
+								return
+
 							else:
-								logger.info("{}.delete()".format(result_spec.id))
-								del self.workers[result_spec.id]
-								self.add_worker()
-
-							message.ack()
-							return
-
+								logger.warning("{} received results for < current total_steps".format(result_spec.id))
 						else:
-							logger.warning("{} worker not found for message {}".format(result_spec.id, result_spec))
+							logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
 					else:
 						logger.warning("Message timeout")
 
