@@ -23,6 +23,21 @@ class Drone(object):
 		self.publisher = pubsub_v1.PublisherClient()
 		self.result_topic_path = self.publisher.topic_path(self.args.project, "pbt_result")
 
+	def _send_result(self, run_spec, worker, success):
+		result_spec = ResultSpec(
+			self.args.group, 
+			run_spec.id, 
+			worker.results, 
+			success, 
+			run_spec.micro_step,
+			worker.recent_steps,
+			worker.total_steps, 
+			time.time())
+		
+		data = pickle.dumps(result_spec)
+		self.publisher.publish(self.result_topic_path, data=data)
+
+
 	def _handle_message(self, message):
 		try:
 			run_spec = pickle.loads(message.data)
@@ -36,23 +51,22 @@ class Drone(object):
 						try:
 							if run_spec.id in self.worker_cache:
 								worker = self.worker_cache[run_spec.id]
-								worker.params = run_spec.params
 							else:
 								worker = self.SubjectClass(self.init_params, run_spec.params)
 								worker.id = run_spec.id
 								self.worker_cache[run_spec.id] = worker
 
+							worker.update_from_run_spec(run_spec)
+
 							message.ack() # training takes too long and the ack will miss its window
 							logger.info("{}.step_and_eval()".format(run_spec.id))
-							results = worker.step_and_eval(run_spec.steps)
-							result_spec = ResultSpec(self.args.group, run_spec.id, results, True, run_spec.steps, time.time())
+							for i in range(run_spec.macro_step):
+								worker.step_and_eval(run_spec.micro_step)
+								self._send_result(run_spec, worker, True)
 
 						except Exception as e:
 							traceback.print_exc()
-							result_spec = ResultSpec(self.args.group, run_spec.id, None, False, run_spec.steps, time.time())
-
-						data = pickle.dumps(result_spec)
-						self.publisher.publish(self.result_topic_path, data=data)
+							self._send_result(run_spec, worker, False)
 						
 						return
 

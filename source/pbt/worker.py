@@ -34,13 +34,15 @@ class Worker(object):
 		self.params = params
 
 		self.results = {}
-		self.total_count = 0
+		self.total_steps = 0
+		self.recent_steps = 0
 		self.time_started = 0
-		self.performance = (0,0)
-		self.reset_count()
 
+	def update_from_run_spec(self, run_spec):
+		self.params = run_spec.params
+		self.total_steps = run_spec.total_steps
+		self.recent_steps = run_spec.recent_steps
 
-	
 	# --------------------------------------------------------------------------
 	# Implement these
 	# --------------------------------------------------------------------------
@@ -100,23 +102,13 @@ class Worker(object):
 		else:
 			return os.path.join(self.init_params["model_dir"], self.friendly_params["model_id"]["warm_start_from"])
 
-	def is_ready(self):
-		mi = self.friendly_params["micro_step"]
-		ma = self.friendly_params["macro_step"]
-
-		return self.current_count >= mi * ma
-
-
 	# --------------------------------------------------------------------------
 	# Step and eval
 	# --------------------------------------------------------------------------
-
-	def reset_count(self):
-		self.current_count = 0
 		
 	def step(self, steps):
-		self.current_count += steps
-		self.total_count += steps
+		self.recent_steps += steps
+		self.total_steps += steps
 
 		started = time.time()
 		
@@ -128,7 +120,6 @@ class Worker(object):
 
 	def eval(self):
 		self.results = self.do_eval()
-
 		return self.results
 
 
@@ -137,21 +128,6 @@ class Worker(object):
 		self.step(steps)
 		logger.info("{}.eval()".format(self.id))
 		return self.eval()
-
-	# --------------------------------------------------------------------------
-	# Multi-process sync
-	# --------------------------------------------------------------------------
-	
-	def record_start(self):
-		self.time_started = time.time()
-		
-
-	def record_finish(self, steps, results):
-		self.current_count += steps
-		self.total_count += steps
-		self.performance = (steps, time.time()-self.time_started)
-		self.time_started = 0
-		self.results = results
 
 
 	# --------------------------------------------------------------------------
@@ -167,7 +143,6 @@ class Worker(object):
 		with open(path, 'rb') as file:
 			w = pickle.load(file)
 		w.init_params = init_params
-		w.reset_count()
 		return w
 
 	 

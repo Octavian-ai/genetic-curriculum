@@ -17,11 +17,11 @@ def get_args(args=None):
 	parser.add_argument('--project',				type=str,  default=os.getenv("GOOGLE_CLOUD_PROJECT", "octavian-181621"))
 
 	parser.add_argument('--epochs', 				type=int,  default=1000)
-	parser.add_argument('--micro-step', 			type=int,  default=5 * 1000)
-	parser.add_argument('--macro-step', 			type=int,  default=1)
+	parser.add_argument('--micro-step', 			type=int,  default=100)
+	parser.add_argument('--macro-step', 			type=int,  default=50)
 
 	parser.add_argument('--batch-size', 			type=int,  default=32)
-	parser.add_argument('--n-workers', 				type=int,  default=10)
+	parser.add_argument('--n-workers', 				type=int,  default=15)
 	parser.add_argument('--job-timeout', 			type=int,  default=60*10)
 	parser.add_argument('--message-timeout', 		type=int,  default=60*10)
 	parser.add_argument('--sleep-per-cycle', 		type=int,  default=10)

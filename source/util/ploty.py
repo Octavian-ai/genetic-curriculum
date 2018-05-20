@@ -29,7 +29,7 @@ try:
   from googleapiclient.discovery import build
   from googleapiclient.http import MediaFileUpload
 except ImportError as e:
-  logger.warn("Could not import googleapiclient, will not save to google drive; " + str(e))
+  logger.debug("Could not import googleapiclient, will not save to google drive; " + str(e))
   pass
 
 

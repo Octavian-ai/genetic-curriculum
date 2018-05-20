@@ -17,6 +17,7 @@ google-cloud = "*"
 dm-sonnet = "*"
 matplotlib = "*"
 google-cloud-pubsub = "*"
+pyaml = "*"
 
 
 [requires]

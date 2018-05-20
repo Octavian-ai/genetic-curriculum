@@ -7,6 +7,7 @@ import uuid
 from google.cloud import pubsub_v1
 import traceback
 import random
+import yaml
 import logging
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ class Supervisor(object):
 		try:
 			with FileReady(self.args, "workers.pkl", True) as file:
 				self.workers = pickle.load(file)
+				logger.info("Loaded {} workers".format(len(self.workers)))
 				
 		except FileNotFoundError:
 			self.workers = {}
@@ -70,6 +72,9 @@ class Supervisor(object):
 		with FileWritey(self.args, "workers.pkl", True) as file:
 			pickle.dump(self.workers, file)
 
+		with FileWritey(self.args, "workers.yaml", False) as file:
+			file.write(yaml.dump(self.workers))
+			
 		self.time_last_save = time.time()
 
 	def print(self):
@@ -206,7 +211,8 @@ class Supervisor(object):
 
 	def dispatch(self, worker):
 		"""Request drone runs this worker"""
-		run_spec = RunSpec(self.args.group, worker.id, worker.params, self.args.micro_step, time.time())
+		run_spec = worker.gen_run_spec(self.args)
+
 		data = pickle.dumps(run_spec)
 		self.publisher.publish(self.run_topic_path, data=data)
 		logger.info('{}.dispatch()'.format(worker.id))
@@ -241,7 +247,7 @@ class Supervisor(object):
 							i = self.workers[result_spec.id]
 
 							if result_spec.success:
-								i.record_result(result_spec)
+								i.update_from_result_spec(result_spec)
 								logger.info("{}.record_result({})".format(result_spec.id, result_spec.results))
 								self.consider_exploit(i)
 								self.dispatch(i)
