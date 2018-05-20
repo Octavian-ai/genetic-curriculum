@@ -31,7 +31,7 @@ class WorkerHeader(object):
 	def __init__(self, params):
 		self.id = uuid.uuid1()
 		self.results = None
-		self.time_dispatched = 0
+		self.time_last_updated = 0
 		self.total_steps = 0
 		self.recent_steps = 0
 
@@ -41,6 +41,7 @@ class WorkerHeader(object):
 		self.total_steps = result_spec.total_steps
 		self.recent_steps = result_spec.recent_steps
 		self.results = result_spec.results
+		self.time_last_updated = time.time()
 
 	def gen_run_spec(self, args):
 		return RunSpec(

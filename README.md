@@ -24,3 +24,9 @@ To test:
 kubectl create serviceaccount default --namespace default
 kubectl create clusterrolebinding default-cluster-rule --clusterrole=cluster-admin --serviceaccount=default:default
 ```
+
+To see dashboard:
+```
+gcloud config config-helper --format=json | jq --raw-output '.credential.access_token'
+kubectl proxy
+```

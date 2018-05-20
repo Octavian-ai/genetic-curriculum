@@ -214,11 +214,11 @@ class Supervisor(object):
 		data = pickle.dumps(run_spec)
 		self.publisher.publish(self.run_topic_path, data=data)
 		logger.info('{}.dispatch()'.format(worker.id))
-		worker.time_dispatched = time.time()
+		worker.time_last_updated = time.time()
 
 	def dispatch_idle(self):
 		for i in self.workers.values():
-			if time.time() - i.time_dispatched > self.args.job_timeout:
+			if time.time() - i.time_last_updated > self.args.job_timeout:
 				self.dispatch(i)
 
 	def subscribe(self):
@@ -232,40 +232,39 @@ class Supervisor(object):
 	def _handle_result(self, message):
 		try:
 			result_spec = pickle.loads(message.data)
-			
-			if isinstance(result_spec, ResultSpec):
-				if result_spec.group != self.args.group:
-					message.nack()
-					return
-				else:
-					if time.time() - result_spec.time_sent < self.args.message_timeout:
-						if result_spec.id in self.workers:
-							i = self.workers[result_spec.id]
+		except Exception:
+			message.ack()
+			return
+		
+		if isinstance(result_spec, ResultSpec):
+			if result_spec.group != self.args.group:
+				message.nack()
+				return
+			else:
+				if time.time() - result_spec.time_sent < self.args.message_timeout:
+					if result_spec.id in self.workers:
+						i = self.workers[result_spec.id]
 
-							if result_spec.total_steps >= i.total_steps:
-								if result_spec.success:
-									i.update_from_result_spec(result_spec)
-									logger.info("{}.record_result({})".format(result_spec.id, result_spec))
-									self.consider_exploit(i)
-								else:
-									logger.info("del {}".format(result_spec.id))
-									del self.workers[result_spec.id]
-									self.add_worker()
-
-								message.ack()
-								return
-
+						if result_spec.total_steps >= i.total_steps:
+							if result_spec.success:
+								i.update_from_result_spec(result_spec)
+								logger.info("{}.record_result({})".format(result_spec.id, result_spec))
+								self.consider_exploit(i)
 							else:
-								logger.warning("{} received results for < current total_steps".format(result_spec.id))
+								logger.info("del {}".format(result_spec.id))
+								del self.workers[result_spec.id]
+								self.add_worker()
+
+							message.ack()
+							return
+
 						else:
-							logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
+							logger.warning("{} received results for < current total_steps".format(result_spec.id))
 					else:
-						logger.warning("Message timeout")
-
-		except pickle.UnpicklingError as ex:
-			# Ok, that message wasn't for my codebase
-			pass
-
+						logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
+				else:
+					logger.warning("Message timeout")
+		
 		# Swallow bad messages
 		# The design is for the supervisor to re-send and to re-spawn drones
 		message.ack()

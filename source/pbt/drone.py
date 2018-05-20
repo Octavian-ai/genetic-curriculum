@@ -43,44 +43,43 @@ class Drone(object):
 
 		try:
 			run_spec = pickle.loads(message.data)
-			
-			if isinstance(run_spec, RunSpec):
-				if time.time() - run_spec.time_sent < self.args.message_timeout:
-					if run_spec.group != self.args.group:
-						message.nack()
-						return
-					else:
-						# logger.info("Received message {}".format(run_spec))
+		except Exception:
+			message.ack()
+			return
 
-						if run_spec.id in self.worker_cache:
-							worker = self.worker_cache[run_spec.id]
-						else:
-							worker = self.SubjectClass(self.init_params, run_spec.params)
-							worker.id = run_spec.id
-							self.worker_cache[run_spec.id] = worker
-
-						worker.update_from_run_spec(run_spec)
-						message.ack() # training takes too long and the ack will miss its window
-
-						try:
-							logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
-							for i in range(run_spec.macro_step):
-								worker.step_and_eval(run_spec.micro_step)
-								self._send_result(run_spec, worker, True)
-
-						except Exception as e:
-							traceback.print_exc()
-							self._send_result(run_spec, worker, False)
-						
-						return
+		if isinstance(run_spec, RunSpec):
+			if time.time() - run_spec.time_sent < self.args.message_timeout:
+				if run_spec.group != self.args.group:
+					message.nack()
+					return
 				else:
-					logger.debug("Timed out message")
-			else:
-				logger.debug("Received non RunSpec {}".format(run_spec))
+					# logger.info("Received message {}".format(run_spec))
 
-		except pickle.UnpicklingError as ex:
-			# traceback.print_exc()
-			pass
+					if run_spec.id in self.worker_cache:
+						worker = self.worker_cache[run_spec.id]
+					else:
+						worker = self.SubjectClass(self.init_params, run_spec.params)
+						worker.id = run_spec.id
+						self.worker_cache[run_spec.id] = worker
+
+					worker.update_from_run_spec(run_spec)
+					message.ack() # training takes too long and the ack will miss its window
+
+					try:
+						logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
+						for i in range(run_spec.macro_step):
+							worker.step_and_eval(run_spec.micro_step)
+							self._send_result(run_spec, worker, True)
+
+					except Exception as e:
+						traceback.print_exc()
+						self._send_result(run_spec, worker, False)
+					
+					return
+			else:
+				logger.debug("Timed out message")
+		else:
+			logger.debug("Received non RunSpec {}".format(run_spec))
 
 
 		# Swallow bad messages

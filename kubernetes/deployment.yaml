@@ -2,16 +2,16 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    deployment.kubernetes.io/revision: "11"
-  creationTimestamp: 2018-05-17T20:38:47Z
-  generation: 25
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: 2018-05-18T16:43:14Z
+  generation: 10
   labels:
     app: pbt
   name: pbt
   namespace: default
-  resourceVersion: "154391"
+  resourceVersion: "382916"
   selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt
-  uid: 4ca72a98-5a12-11e8-8721-42010a8a016f
+  uid: 8f31246e-5aba-11e8-aece-42010a8001bf
 spec:
   replicas: 1
   selector:
