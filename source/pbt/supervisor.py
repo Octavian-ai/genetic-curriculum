@@ -31,9 +31,11 @@ class Supervisor(object):
 		self.print_dirty = False
 		self.save_epoch = 0
 
-		self.plot_workers  = Ploty(args, title='Worker performance', x='Time', y="Score")
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
-		self.plot_loss     = Ploty(args, title='Loss', x='Time', y="Loss")
+		self.plot_measures = {}
+		self.measures = {
+			"score": self.score
+		}
 
 		self.publisher = pubsub_v1.PublisherClient()
 		self.subscription = None
@@ -44,9 +46,8 @@ class Supervisor(object):
 
 	@property
 	def file_path(self):
-		return os.path.join(self.args.output_dir, "workers.pkl")
+		return os.path.join(self.args.output_dir, self.args.run, "workers.pkl")
 		
-
 	def load(self):
 		logger.info("Trying to load workers from " + self.file_path)
 	
@@ -62,10 +63,6 @@ class Supervisor(object):
 
 
 	def save(self):
-		try:
-			pathlib.Path(self.file_path).mkdir(parents=True, exist_ok=True) 
-		except:
-			pass
 
 		logger.info("Saving workers to " + self.file_path)
 
@@ -80,17 +77,17 @@ class Supervisor(object):
 	def print(self):
 		epoch = self.save_epoch
 
-		measures = {
-			"score": self.score,
-			"loss": lambda worker: -1
-		}
-
 		try:
 			random_worker = random.choice(list(self.workers.values()))
 			for key in random_worker.results.keys():
-				measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
+				if key not in self.measures:
+					self.measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
 		except Exception:
 			pass
+
+		for key in self.measures.keys():
+			if key not in self.plot_measures:
+				self.plot_measures[key] = Ploty(self.args, title="Metric "+key, x='Time', y=key)
 
 		def plot_param_metrics(plot, epoch, worker, prefix="", suffix=""):
 			for key, val in worker.params.items():
@@ -104,13 +101,13 @@ class Supervisor(object):
 
 
 		stack = list(self.workers.values())
-		stack.sort(key=measures["loss"])
+		stack.sort(key=self.score)
 		
 		for idx, worker in enumerate(stack):
-			self.plot_workers.add_result(epoch, self.score(worker), str(idx))
-			self.plot_loss.add_result(epoch, measures["loss"](worker), str(idx))
+			for key, value in self.plot_measures.items():
+				value.add_result(epoch, self.measures[key](worker), str(idx))
 
-		for key, fn in measures.items():
+		for key, fn in self.measures.items():
 			vs = [fn(i) for i in self.workers.values()]
 
 			if len(vs) > 0:
@@ -125,8 +122,8 @@ class Supervisor(object):
 		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
 
 		self.plot_progress.write()
-		self.plot_workers.write()
-		self.plot_loss.write()
+		for value in self.plot_measures.values():
+			value.write()
 
 		self.save_epoch += 1
 		self.print_dirty = False
@@ -223,7 +220,7 @@ class Supervisor(object):
 	def subscribe(self):
 		subscriber = pubsub_v1.SubscriberClient()
 		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
-		logger.debug("Subscribing to {} {}".format(result_subscription_path, self.args.group))
+		logger.debug("Subscribing to {} {}".format(result_subscription_path, self.args.run))
 		self.subscription = subscriber.subscribe(result_subscription_path, callback=lambda message:self._handle_result(message))
 		return self.subscription
 
@@ -236,7 +233,7 @@ class Supervisor(object):
 			return
 		
 		if isinstance(result_spec, ResultSpec):
-			if result_spec.group != self.args.group:
+			if result_spec.group != self.args.run:
 				message.nack()
 				return
 			else:

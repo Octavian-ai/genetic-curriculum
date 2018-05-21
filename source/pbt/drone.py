@@ -25,7 +25,7 @@ class Drone(object):
 
 	def _send_result(self, run_spec, worker, success):
 		result_spec = ResultSpec(
-			self.args.group, 
+			self.args.run, 
 			run_spec.id, 
 			worker.results, 
 			success, 
@@ -49,7 +49,7 @@ class Drone(object):
 
 		if isinstance(run_spec, RunSpec):
 			if time.time() - run_spec.time_sent < self.args.message_timeout:
-				if run_spec.group != self.args.group:
+				if run_spec.group != self.args.run:
 					message.nack()
 					return
 				else:
@@ -91,7 +91,7 @@ class Drone(object):
 		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
 		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 
-		logger.info("Subscribing to {} {}".format(run_subscription_path, self.args.group))
+		logger.info("Subscribing to {} {}".format(run_subscription_path, self.args.run))
 
 		self.subscription = subscriber.subscribe(run_subscription_path, 
 			callback=lambda message: self._handle_message(message), 

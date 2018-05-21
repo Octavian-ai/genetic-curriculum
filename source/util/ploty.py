@@ -155,11 +155,11 @@ class Ploty(object):
   
   @property
   def csv_file_path(self):
-    return os.path.join(self.args.output_dir, self.csv_filename)
+    return os.path.join(self.args.output_dir, self.args.run, self.csv_filename)
 
   @property
   def png_file_path(self):
-    return os.path.join(self.args.output_dir, self.png_filename)
+    return os.path.join(self.args.output_dir, self.args.run, self.png_filename)
 
   @property
   def is_png_enabled(self):

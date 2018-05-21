@@ -13,12 +13,31 @@ except ImportError as e:
   pass
 
 
-class FileReady(object):
+class FileThingy(object):
+
+  def __init__(self, args, filename):
+    self.args = args
+    self.filename = filename
+
+  @property
+  def file_dir(self):
+    return os.path.join(self.args.output_dir, self.args.run)
+
+  @property
+  def file_path(self):
+    return os.path.join(self.args.output_dir, self.args.run, self.filename)
+
+  @property
+  def gcs_path(self):
+    return os.path.join(self.args.gcs_dir, self.args.run, self.filename)
+  
+  
+
+class FileReady(FileThingy):
   """Tries to write on traditional filesystem and Google Cloud storage"""
 
   def __init__(self, args, filename, binary=False):
-    self.args = args
-    self.filename = filename
+    super().__init__(args, filename)
     self.trad_file = None
     self.open_str = "rb" if binary else "r" 
 
@@ -26,9 +45,9 @@ class FileReady(object):
     if 'google.cloud' in sys.modules and self.args.bucket is not None and self.args.gcs_dir is not None:
       client = storage.Client()
       bucket = client.get_bucket(self.args.bucket)
-      blob2 = bucket.blob(os.path.join(self.args.gcs_dir, self.filename))
-      os.makedirs(self.args.output_dir, exist_ok=True)
-      with open(os.path.join(self.args.output_dir, self.filename), self.open_str) as dest_file:
+      blob2 = bucket.blob(self.gcs_path)
+      os.makedirs(self.file_dir, exist_ok=True)
+      with open(self.file_path, self.open_str) as dest_file:
         try:
           blob2.download_to_file(dest_file)
         except google.cloud.exceptions.NotFound:
@@ -36,7 +55,7 @@ class FileReady(object):
 
   def __enter__(self):
     self.copy_from_bucket()
-    self.trad_file = open(os.path.join(self.args.output_dir, self.filename), self.open_str)
+    self.trad_file = open(self.file_path, self.open_str)
     return self.trad_file
 
   def __exit__(self, type, value, traceback):
@@ -45,12 +64,11 @@ class FileReady(object):
     
 
 
-class FileWritey(object):
+class FileWritey(FileThingy):
   """Tries to write on traditional filesystem and Google Cloud storage"""
 
   def __init__(self, args, filename, binary=False):
-    self.args = args
-    self.filename = filename
+    super().__init__(args, filename)
     self.trad_file = None
     self.open_str = "wb" if binary else "w" 
 
@@ -58,12 +76,12 @@ class FileWritey(object):
     if 'google.cloud' in sys.modules and self.args.bucket is not None and self.args.gcs_dir is not None:
       client = storage.Client()
       bucket = client.get_bucket(self.args.bucket)
-      blob2 = bucket.blob(os.path.join(self.args.gcs_dir, self.filename))
-      blob2.upload_from_filename(filename=os.path.join(self.args.output_dir, self.filename))
+      blob2 = bucket.blob(self.gcs_path)
+      blob2.upload_from_filename(filename=self.file_path)
 
   def __enter__(self):
-    os.makedirs(self.args.output_dir, exist_ok=True)
-    self.trad_file = open(os.path.join(self.args.output_dir, self.filename), self.open_str)
+    os.makedirs(self.file_dir, exist_ok=True)
+    self.trad_file = open(self.file_path, self.open_str)
     return self.trad_file
 
   def __exit__(self, type, value, traceback):

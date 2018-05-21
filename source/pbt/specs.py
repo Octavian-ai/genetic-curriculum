@@ -45,7 +45,7 @@ class WorkerHeader(object):
 
 	def gen_run_spec(self, args):
 		return RunSpec(
-			args.group, 
+			args.run, 
 			self.id, 
 			self.params, 
 			self.recent_steps,
