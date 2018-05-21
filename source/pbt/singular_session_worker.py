@@ -117,7 +117,7 @@ class SingularSessionWorker(Worker):
 		sm.close()
 
 		return {
-			k: v[0]
+			k: float(v[0])
 			for k, v in r.items()
 		}
 		

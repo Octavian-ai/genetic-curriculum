@@ -91,7 +91,7 @@ class Drone(object):
 		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
 		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
 
-		logger.debug("Subscribing to {} {}".format(run_subscription_path, self.args.group))
+		logger.info("Subscribing to {} {}".format(run_subscription_path, self.args.group))
 
 		self.subscription = subscriber.subscribe(run_subscription_path, 
 			callback=lambda message: self._handle_message(message), 

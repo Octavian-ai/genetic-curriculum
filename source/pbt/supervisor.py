@@ -54,9 +54,8 @@ class Supervisor(object):
 				self.workers = pickle.load(file)
 				logger.info("Loaded {} workers".format(len(self.workers)))
 				
-		except FileNotFoundError:
+		except Exception:
 			self.workers = {}
-
 
 		self.time_last_save = time.time()
 
@@ -175,12 +174,16 @@ class Supervisor(object):
 		try:
 			mentor = self.get_mentor()
 			params = mentor.params.mutate(self.args.heat)
-			logger.info("new worker from {}.mutate()".format(mentor.id))
+			logger.info("New worker from {}.mutate()".format(mentor.id))
+			results = mentor.results
 
 		except ValueError:
+			logger.info("New worker from param spec realize")
 			params = self.param_spec.realize()
+			results = None
 
 		newbie = WorkerHeader(params)
+		newbie.results = results
 		self.workers[newbie.id] = newbie
 		self.dispatch(newbie)
 
@@ -264,7 +267,7 @@ class Supervisor(object):
 						logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
 				else:
 					logger.warning("Message timeout")
-		
+
 		# Swallow bad messages
 		# The design is for the supervisor to re-send and to re-spawn drones
 		message.ack()
