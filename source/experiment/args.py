@@ -9,7 +9,7 @@ def get_args(args=None):
 	parser.add_argument('--output-dir', 			type=str,  default="./output")
 	parser.add_argument('--model-dir',	 			type=str,  default="./output/checkpoint")
 
-	parser.add_argument('--group',					type=str,  default=os.getenv("PBT_GROUP", "default"), help="A group of drones and manager - set this to a personal string to keep your experiment seperate from other peoples")
+	parser.add_argument('--group',					type=str,  default=os.getenv("GROUP", "default"), help="A group of drones and manager - set this to a personal string to keep your experiment seperate from other peoples")
 
 	# For storing to Google Cloud
 	parser.add_argument('--bucket',					type=str,  default=None)
@@ -21,7 +21,7 @@ def get_args(args=None):
 	parser.add_argument('--macro-step', 			type=int,  default=50)
 
 	parser.add_argument('--batch-size', 			type=int,  default=32)
-	parser.add_argument('--n-workers', 				type=int,  default=15)
+	parser.add_argument('--n-workers', 				type=int,  default=os.getenv("N_WORKERS", 15))
 	parser.add_argument('--job-timeout', 			type=int,  default=60*10)
 	parser.add_argument('--message-timeout', 		type=int,  default=60*5)
 	parser.add_argument('--sleep-per-cycle', 		type=int,  default=10)
