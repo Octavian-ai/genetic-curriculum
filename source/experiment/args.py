@@ -24,9 +24,9 @@ def get_args(args=None):
 	parser.add_argument('--n-workers', 				type=int,  default=os.getenv("N_WORKERS", 15))
 	parser.add_argument('--job-timeout', 			type=int,  default=60*10)
 	parser.add_argument('--message-timeout', 		type=int,  default=60*5)
-	parser.add_argument('--sleep-per-cycle', 		type=int,  default=10)
+	parser.add_argument('--sleep-per-cycle', 		type=int,  default=20)
 	parser.add_argument('--save-secs', 				type=int,  default=60*5)
-	parser.add_argument('--print-secs', 			type=int,  default=60*5)
+	parser.add_argument('--print-secs', 			type=int,  default=30)
 	
 	parser.add_argument('--lr',						type=float, default=1e-4)
 	parser.add_argument('--max-grad-norm',			type=float, default=50)

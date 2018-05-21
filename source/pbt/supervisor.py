@@ -28,11 +28,12 @@ class Supervisor(object):
 		
 		self.time_last_save = time.time()
 		self.time_last_print = time.time()
+		self.print_dirty = False
 		self.save_epoch = 0
 
 		self.plot_workers  = Ploty(args, title='Worker performance', x='Time', y="Score")
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
-		self.plot_hyper    = Ploty(args, title='Hyper parameters', x='Time', y="Value")
+		self.plot_loss     = Ploty(args, title='Loss', x='Time', y="Loss")
 
 		self.publisher = pubsub_v1.PublisherClient()
 		self.subscription = None
@@ -80,7 +81,8 @@ class Supervisor(object):
 		epoch = self.save_epoch
 
 		measures = {
-			"score": self.score
+			"score": self.score,
+			"loss": lambda worker: -1
 		}
 
 		try:
@@ -100,15 +102,13 @@ class Supervisor(object):
 							if isinstance(mval, int) or isinstance(mval, float):
 								plot.add_result(epoch, mval, prefix+key+"_"+mkey+suffix)
 
+
+		stack = list(self.workers.values())
+		stack.sort(key=measures["loss"])
 		
-		for i, worker in self.workers.items():
-
-			self.plot_workers.add_result(epoch, self.score(worker),  str(i))
-
-			for key, fn in measures.items():
-				self.plot_hyper.add_result(epoch, fn(worker),  str(i)+"_"+key, "s", '--')
-
-			plot_param_metrics(self.plot_hyper, epoch, worker, str(i)+"_")
+		for idx, worker in enumerate(stack):
+			self.plot_workers.add_result(epoch, self.score(worker), str(idx))
+			self.plot_loss.add_result(epoch, measures["loss"](worker), str(idx))
 
 		for key, fn in measures.items():
 			vs = [fn(i) for i in self.workers.values()]
@@ -121,26 +121,22 @@ class Supervisor(object):
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
 
-		# steps_per_sec = [
-		# 	i.performance[0] / i.performance[1]
-		# 	for i in self.workers if i.performance[1] > 0
-		# ]
-		# self.plot_progress.add_result(epoch, sum(steps_per_sec), "steps_per_sec")
-
 		best_worker = max(self.workers.values(), key=self.score)
 		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
 
 		self.plot_progress.write()
 		self.plot_workers.write()
-		self.plot_hyper.write()
+		self.plot_loss.write()
+
 		self.save_epoch += 1
+		self.print_dirty = False
 
 	def consider_save(self):
 		if time.time() - self.time_last_save > self.args.save_secs:
 			self.save()
 
 	def consider_print(self):
-		if time.time() - self.time_last_print > self.args.print_secs:
+		if time.time() - self.time_last_print > self.args.print_secs and self.print_dirty:
 			self.print()
 
 
@@ -249,6 +245,8 @@ class Supervisor(object):
 						i = self.workers[result_spec.id]
 
 						if result_spec.total_steps >= i.total_steps:
+							self.print_dirty = True
+
 							if result_spec.success:
 								i.update_from_result_spec(result_spec)
 								logger.info("{}.record_result({})".format(result_spec.id, result_spec))
