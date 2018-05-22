@@ -1,7 +1,9 @@
 
-import logging
-logging.basicConfig()
+import logging, coloredlogs
+
 logger = logging.getLogger(__name__)
+logging.basicConfig()
+coloredlogs.install(level='INFO',logger=logger)
 
 import requests
 import json
@@ -35,27 +37,45 @@ if __name__ == "__main__":
 	manager = None
 	drone = None
 
-	logger.info("Start drone")
-	drone = get_drone(args)
+	
 
-	while True:
+	try:
+		while True:
 
-		leader = i_am_leader(args)
+			leader = i_am_leader(args)
 
-		if manager is None and leader:
-			logger.info("Start supervisor")
-			manager = get_supervisor(args)
+			if leader:
+				if manager is None:
+					logger.info("Start supervisor")
+					manager = get_supervisor(args)
 
-		if manager is not None and not leader:
-			logger.info("Stop supervisor")
-			manager.close()
-			manager = None
+				if drone is not None:
+					drone.close()
+					drone = None
+			else:
+				if manager is not None:
+					logger.info("Stop supervisor")
+					manager.close()
+					manager = None
 
-		drone.ensure_running()
+				if drone is None:
+					logger.info("Start drone")
+					drone = get_drone(args)
 
+
+			if manager is not None:
+				manager.run_epoch()
+
+			if drone is not None:
+				drone.run_epoch()
+
+			time.sleep(args.sleep_per_cycle)
+
+	except KeyboardInterrupt:
 		if manager is not None:
-			manager.ensure_running()
-			manager.run_epoch()
+			manager.close()
 
-		time.sleep(args.sleep_per_cycle)
+		if drone is not None:
+			drone.close()
+
 

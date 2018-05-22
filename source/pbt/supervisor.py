@@ -15,14 +15,16 @@ from util import Ploty
 
 from .specs import *
 from .param import FixedParam
+from .queue import QueueFactory
 from util import FileWritey, FileReady
 
 class Supervisor(object):
 
-	def __init__(self, args, param_spec, score):
+	def __init__(self, args, param_spec, score, reverse=False):
 		self.args = args
 		self.param_spec = param_spec
 		self.score = score
+		self.reverse = reverse
 
 		self.workers = {}
 		
@@ -37,9 +39,8 @@ class Supervisor(object):
 			"score": self.score
 		}
 
-		self.publisher = pubsub_v1.PublisherClient()
-		self.subscription = None
-		self.run_topic_path = self.publisher.topic_path(self.args.project, "pbt_run")
+		self.queue_result = QueueFactory.vend(self.args, "pbt_result")
+		self.queue_run = QueueFactory.vend(self.args, "pbt_run")
 		
 		if self.args.load:
 			self.load()
@@ -98,7 +99,7 @@ class Supervisor(object):
 
 
 		stack = list(self.workers.values())
-		stack.sort(key=self.score)
+		stack.sort(key=self.score,reverse=self.reverse)
 		
 		for idx, worker in enumerate(stack):
 			for key, value in self.plot_measures.items():
@@ -115,7 +116,7 @@ class Supervisor(object):
 
 		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
 
-		best_worker = max(self.workers.values(), key=self.score)
+		best_worker = stack[-1]
 		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
 
 		self.plot_progress.write()
@@ -147,7 +148,7 @@ class Supervisor(object):
 	def get_mentor(self):
 		stack = list(self.workers.values())
 		random.shuffle(stack) # Tie-break randomly
-		stack = sorted(stack, key=self.score)
+		stack = sorted(stack, key=self.score, reverse=self.reverse)
 		
 		n20 = max(round(len(self.workers) * self.args.exploit_pct), 1)
 		top20 = stack[-n20:]
@@ -181,7 +182,7 @@ class Supervisor(object):
 	def remove_worker(self):
 		if len(self.workers) > 0:
 			stack = list(self.workers.values())
-			stack.sort(key=self.score)
+			stack.sort(key=self.score, reverse=self.reverse)
 			del self.workers[stack[0].id]	
 
 
@@ -189,7 +190,7 @@ class Supervisor(object):
 		if worker.recent_steps >= self.args.micro_step * self.args.macro_step:
 
 			stack = list(self.workers.values())
-			stack.sort(key=self.score)
+			stack.sort(key=self.score, reverse=self.reverse)
 			idx = stack.index(worker)
 
 			if idx < max(len(stack) * self.args.exploit_pct,1):
@@ -204,8 +205,7 @@ class Supervisor(object):
 	def dispatch(self, worker):
 		"""Request drone runs this worker"""
 		run_spec = worker.gen_run_spec(self.args)
-		data = pickle.dumps(run_spec)
-		self.publisher.publish(self.run_topic_path, data=data)
+		self.queue_run.send(run_spec)
 		logger.info('{}.dispatch()'.format(worker.id))
 		worker.time_last_updated = time.time()
 
@@ -214,69 +214,45 @@ class Supervisor(object):
 			if time.time() - i.time_last_updated > self.args.job_timeout:
 				self.dispatch(i)
 
-	def subscribe(self):
-		subscriber = pubsub_v1.SubscriberClient()
-		result_subscription_path = subscriber.subscription_path(self.args.project, "pbt_result_worker")
-		logger.debug("Subscribing to {} {}".format(result_subscription_path, self.args.run))
-		self.subscription = subscriber.subscribe(result_subscription_path, callback=lambda message:self._handle_result(message))
-		return self.subscription
 
+	def _handle_result(self, result_spec, ack, nack):		
+		if result_spec.id in self.workers:
+			i = self.workers[result_spec.id]
 
-	def _handle_result(self, message):
-		try:
-			result_spec = pickle.loads(message.data)
-		except Exception:
-			message.ack()
-			return
-		
-		if isinstance(result_spec, ResultSpec):
-			if result_spec.group != self.args.run:
-				message.nack()
-				return
-			else:
-				if time.time() - result_spec.time_sent < self.args.message_timeout:
-					if result_spec.id in self.workers:
-						i = self.workers[result_spec.id]
+			if result_spec.total_steps >= i.total_steps:
+				self.print_dirty = True
 
-						if result_spec.total_steps >= i.total_steps:
-							self.print_dirty = True
-
-							if result_spec.success:
-								i.update_from_result_spec(result_spec)
-								logger.info("{}.record_result({})".format(result_spec.id, result_spec))
-								self.consider_exploit(i)
-							else:
-								logger.info("del {}".format(result_spec.id))
-								del self.workers[result_spec.id]
-								self.add_worker()
-
-							message.ack()
-							return
-
-						else:
-							logger.warning("{} received results for < current total_steps".format(result_spec.id))
-					else:
-						logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
+				if result_spec.success:
+					i.update_from_result_spec(result_spec)
+					logger.info("{}.record_result({})".format(result_spec.id, result_spec))
+					self.consider_exploit(i)
 				else:
-					logger.warning("Message timeout")
+					logger.info("del {}".format(result_spec.id))
+					del self.workers[result_spec.id]
+					self.add_worker()
+
+				ack()
+				return
+
+			else:
+				logger.warning("{} received results for < current total_steps".format(result_spec.id))
+		else:
+			logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
 
 		# Swallow bad messages
 		# The design is for the supervisor to re-send and to re-spawn drones
-		message.ack()
+		ack()
 
 
 	def close(self):
-		if self.subscription is not None:
-			self.subscription.close()
-
+		self.queue_result.close()
+		self.queue_run.close()
 	
-	def ensure_running(self):
-		if self.subscription is None:
-			self.subscribe()
-		elif self.subscription.future.done():
-			self.subscribe()
+	def subscribe(self):
+		self.queue_result.subscribe(lambda spec, ack, nack: self._handle_result(spec, ack, nack))
 
 	def run_epoch(self):
+		self.subscribe()
 		self.scale_workers()
 		self.dispatch_idle()
 		self.consider_save()

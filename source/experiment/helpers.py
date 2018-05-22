@@ -115,23 +115,13 @@ def get_drone(args):
 
 def score(worker):
 	try:
-		return (100.0-worker.results["loss"]) * worker.results["total_elements"] / 100
+		return (worker.results["loss"] + 1) / worker.results["total_elements"]
 	except Exception:
-		return -1
+		return 100
 
-
-def get_supervisor_old(args):
-	return Supervisor(
-		args,
-		SingularSessionWorker, 
-		gen_worker_init_params(args), 
-		gen_param_spec(args), 
-		score=score,
-		n_workers=args.n_workers,
-		heat=args.heat)
 
 def get_supervisor(args):
-	return Supervisor(args, gen_param_spec(args), score)
+	return Supervisor(args, gen_param_spec(args), score, True)
 
 
 

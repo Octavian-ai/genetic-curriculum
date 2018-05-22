@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Hack for single-threaded
 from .google_pubsub_thread import Policy
 from .specs import *
-from .queue import *
+from .queue import QueueFactory
 
 Perf = collections.namedtuple('Perf', ['time_start', 'time_end', 'steps'])
 
@@ -26,8 +26,8 @@ class Drone(object):
 		self.performance = []
 		self.steps_per_sec = 0
 
-		self.queue_result = GoogleQueue(self.args, ResultSpec, "pbt_result", "pbt_result_worker")
-		self.queue_run = GoogleQueue(self.args, RunSpec, "pbt_run", "pbt_run_worker")
+		self.queue_result = QueueFactory.vend(self.args, "pbt_result")
+		self.queue_run = QueueFactory.vend(self.args, "pbt_run")
 
 
 	def _send_result(self, run_spec, worker, success):
@@ -45,7 +45,7 @@ class Drone(object):
 		logger.info("{}.send_result({})".format(worker.id, result_spec))
 
 
-	def _handle_message(self, run_spec, message):
+	def _handle_message(self, run_spec, ack, nack):
 
 		if run_spec.id in self.worker_cache:
 			worker = self.worker_cache[run_spec.id]
@@ -55,7 +55,7 @@ class Drone(object):
 			self.worker_cache[run_spec.id] = worker
 
 		worker.update_from_run_spec(run_spec)
-		message.ack() # training takes too long and the ack will miss its window
+		ack() # training takes too long and the ack will miss its window
 
 		try:
 			time_start = time.time()
@@ -89,9 +89,16 @@ class Drone(object):
 
 
 
-	def ensure_running(self):
-		self.queue_run.ensure_subscribed(lambda data, message: self._handle_message(data, message))
+	def subscribe(self):
+		self.queue_run.subscribe(lambda data, ack, nack: self._handle_message(data, ack, nack))
 		
+
+	def run_epoch(self):
+		self.subscribe()
+
+	def close(self):
+		self.queue_run.close()
+		self.queue_result.close()
 
 
 

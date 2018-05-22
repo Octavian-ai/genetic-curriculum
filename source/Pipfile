@@ -18,6 +18,8 @@ dm-sonnet = "*"
 matplotlib = "*"
 google-cloud-pubsub = "*"
 pyaml = "*"
+pika = "*"
+coloredlogs = "*"
 
 
 [requires]
