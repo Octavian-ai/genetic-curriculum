@@ -2,6 +2,7 @@
 
 import uuid
 import time
+import collections
 
 RunSpec = collections.namedtuple('RunSpec', [
 	'group', 

@@ -5,6 +5,7 @@ from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 from http import HTTPStatus
 import platform
+import random
 
 class MyHandler(BaseHTTPRequestHandler):
 
@@ -12,7 +13,10 @@ class MyHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header('Content-type', 'text/json')
         self.end_headers()
-        self.wfile.write('{{"name":"{}"}}'.format(platform.node()).encode('utf-8'))
+        hostname = platform.node()
+        if random.random() > 0.5:
+            hostname = "somewhere-else"
+        self.wfile.write('{{"name":"{}"}}'.format(hostname).encode('utf-8'))
         return
 
 
