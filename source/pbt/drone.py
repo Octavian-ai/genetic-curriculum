@@ -3,6 +3,7 @@ from google.cloud import pubsub_v1
 import traceback
 import pickle
 import time
+import collections
 
 import logging
 logger = logging.getLogger(__name__)
@@ -10,6 +11,9 @@ logger = logging.getLogger(__name__)
 # Hack for single-threaded
 from .google_pubsub_thread import Policy
 from .specs import *
+from .queue import *
+
+Perf = collections.namedtuple('Perf', ['time_start', 'time_end', 'steps'])
 
 class Drone(object):
 	
@@ -19,9 +23,12 @@ class Drone(object):
 		self.init_params = init_params
 		self.worker_cache = {}
 
-		self.subscription = None
-		self.publisher = pubsub_v1.PublisherClient()
-		self.result_topic_path = self.publisher.topic_path(self.args.project, "pbt_result")
+		self.performance = []
+		self.steps_per_sec = 0
+
+		self.queue_result = GoogleQueue(self.args, ResultSpec, "pbt_result", "pbt_result_worker")
+		self.queue_run = GoogleQueue(self.args, RunSpec, "pbt_run", "pbt_run_worker")
+
 
 	def _send_result(self, run_spec, worker, success):
 		result_spec = ResultSpec(
@@ -33,92 +40,58 @@ class Drone(object):
 			worker.recent_steps,
 			worker.total_steps, 
 			time.time())
-		
-		data = pickle.dumps(result_spec)
-		self.publisher.publish(self.result_topic_path, data=data)
+
+		self.queue_result.send(result_spec)
 		logger.info("{}.send_result({})".format(worker.id, result_spec))
 
 
-	def _handle_message(self, message):
+	def _handle_message(self, run_spec, message):
+
+		if run_spec.id in self.worker_cache:
+			worker = self.worker_cache[run_spec.id]
+		else:
+			worker = self.SubjectClass(self.init_params, run_spec.params)
+			worker.id = run_spec.id
+			self.worker_cache[run_spec.id] = worker
+
+		worker.update_from_run_spec(run_spec)
+		message.ack() # training takes too long and the ack will miss its window
 
 		try:
-			run_spec = pickle.loads(message.data)
-		except Exception:
-			message.ack()
-			return
+			time_start = time.time()
+			logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
+			for i in range(run_spec.macro_step):
+				worker.step_and_eval(run_spec.micro_step)
+				self._send_result(run_spec, worker, True)
 
-		if isinstance(run_spec, RunSpec):
-			if time.time() - run_spec.time_sent < self.args.message_timeout:
-				if run_spec.group != self.args.run:
-					message.nack()
-					return
-				else:
-					# logger.info("Received message {}".format(run_spec))
+			self.performance.append(Perf(time_start, time.time(), run_spec.micro_step * run_spec.macro_step))
+			self.print_performance()
+		except Exception as e:
+			traceback.print_exc()
+			self._send_result(run_spec, worker, False)
+		
+		
 
-					if run_spec.id in self.worker_cache:
-						worker = self.worker_cache[run_spec.id]
-					else:
-						worker = self.SubjectClass(self.init_params, run_spec.params)
-						worker.id = run_spec.id
-						self.worker_cache[run_spec.id] = worker
+	def print_performance(self):
+		window = 60 * 5
+		cutoff = time.time() - window
+		perf = [i for i in self.performance if i.time_start >= cutoff]
 
-					worker.update_from_run_spec(run_spec)
-					message.ack() # training takes too long and the ack will miss its window
+		if len(perf) > 0:
+			start = min([i.time_start for i in perf])
+			end = max([i.time_end for i in perf])
 
-					try:
-						logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
-						for i in range(run_spec.macro_step):
-							worker.step_and_eval(run_spec.micro_step)
-							self._send_result(run_spec, worker, True)
+			duration = end - start
+			steps = sum([i.steps for i in perf])
 
-					except Exception as e:
-						traceback.print_exc()
-						self._send_result(run_spec, worker, False)
-					
-					return
-			else:
-				logger.debug("Timed out message")
-		else:
-			logger.debug("Received non RunSpec {}".format(run_spec))
+			self.steps_per_sec = steps / duration
+			logger.info("Steps per second: {}".format(self.steps_per_sec))
 
 
-		# Swallow bad messages
-		# The design is for the supervisor to re-send and to re-spawn drones
-		message.ack()
-
-	def subscribe(self):
-		subscriber = pubsub_v1.SubscriberClient(Policy)
-		run_subscription_path = subscriber.subscription_path(self.args.project, "pbt_run_worker")
-		flow_control = pubsub_v1.types.FlowControl(max_messages=1)
-
-		logger.info("Subscribing to {} {}".format(run_subscription_path, self.args.run))
-
-		self.subscription = subscriber.subscribe(run_subscription_path, 
-			callback=lambda message: self._handle_message(message), 
-			flow_control=flow_control
-		)
-
-	def block(self):
-		return self.subscription.future.result()
-
-
-	def run(self):
-		# Hack because lib crashes
-		while True:
-			try:
-				self.subscribe()
-				self.block()
-			except Exception:
-				traceback.print_exc()
-				sleep(5)
-				pass
-				
 
 	def ensure_running(self):
-		if self.subscription is None:
-			self.subscribe()
-		elif self.subscription.future.done():
-			self.subscribe()
+		self.queue_run.ensure_subscribed(lambda data, message: self._handle_message(data, message))
+		
 
 
 

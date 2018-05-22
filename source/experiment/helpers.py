@@ -115,7 +115,7 @@ def get_drone(args):
 
 def score(worker):
 	try:
-		return 100.0-worker.results["loss"]
+		return (100.0-worker.results["loss"]) * worker.results["total_elements"] / 100
 	except Exception:
 		return -1
 

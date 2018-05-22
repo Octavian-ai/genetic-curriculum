@@ -76,15 +76,12 @@ class Supervisor(object):
 
 	def print(self):
 		epoch = self.save_epoch
-
-		try:
-			random_worker = random.choice(list(self.workers.values()))
-			for key in random_worker.results.keys():
-				if key not in self.measures:
-					self.measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
-		except Exception:
-			pass
-
+	
+		random_worker = random.choice(list(self.workers.values()))
+		for key in random_worker.results.keys():
+			if key not in self.measures:
+				self.measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
+	
 		for key in self.measures.keys():
 			if key not in self.plot_measures:
 				self.plot_measures[key] = Ploty(self.args, title="Metric "+key, x='Time', y=key)
