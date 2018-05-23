@@ -77,12 +77,23 @@ class Supervisor(object):
 
 	def print(self):
 		epoch = self.save_epoch
+
+		# Closure so we capture result_key
+		def add_measure(result_key):
+			def get_metric(worker):
+				try:
+					return worker.results[result_key]
+				except Exception:
+					return -1
+
+			self.measures[result_key] = get_metric
 	
 		random_worker = random.choice(list(self.workers.values()))
 		if random_worker.results is not None:
-			for key in random_worker.results.keys():
-				if key not in self.measures:
-					self.measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
+			for result_key in random_worker.results.keys():
+				if result_key not in self.measures:
+					add_measure(result_key)
+					
 	
 		for key in self.measures.keys():
 			if key not in self.plot_measures:
@@ -104,6 +115,7 @@ class Supervisor(object):
 		
 		for idx, worker in enumerate(stack):
 			for key, value in self.plot_measures.items():
+				logger.info("value add_result {}, {}, {}, {}, {}".format(value, key, self.measures[key](worker), str(idx), worker.results))
 				value.add_result(epoch, self.measures[key](worker), str(idx))
 
 		for key, fn in self.measures.items():
