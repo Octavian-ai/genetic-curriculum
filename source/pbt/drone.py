@@ -55,8 +55,7 @@ class Drone(object):
 			self.worker_cache[run_spec.id] = worker
 
 		worker.update_from_run_spec(run_spec)
-		ack() # training takes too long and the ack will miss its window
-
+		
 		try:
 			time_start = time.time()
 			logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
@@ -69,6 +68,8 @@ class Drone(object):
 		except Exception as e:
 			traceback.print_exc()
 			self._send_result(run_spec, worker, False)
+
+		ack()
 		
 		
 

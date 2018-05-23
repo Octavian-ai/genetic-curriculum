@@ -73,14 +73,22 @@ class RabbitQueue(Queue):
 			RabbitQueue.connection = pika.BlockingConnection(parameters)
 
 		self.queue = queue
+		self.exchange = queue + "_exchange"
 		self.channel = RabbitQueue.connection.channel()
-		self.channel.queue_declare(queue=self.queue, durable=True)
+		self.channel.queue_declare(
+			queue=self.queue, 
+			durable=True,
+			arguments={'x-message-ttl' : 60*10})
+
+		self.channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+
+		self.channel.queue_bind(self.queue, self.exchange, self.args.run)
 
 	def send(self, message):
 		message = pickle.dumps(message)
 		self.channel.basic_publish(
-			exchange='',
-			routing_key=self.queue,
+			exchange=self.exchange,
+			routing_key=self.args.run,
 			body=message,
 			properties=pika.BasicProperties(
 				delivery_mode = 2, # make message persistent
@@ -88,20 +96,45 @@ class RabbitQueue(Queue):
 		logger.info("Sent to {} {}".format(self.queue, self.args.run))
 
 	def subscribe(self, callback):
+		
 		def _callback(ch, method, properties, body):
-			ack = lambda: ch.basic_ack(delivery_tag = method.delivery_tag)
-			nack = lambda: ch.basic_nack(delivery_tag = method.delivery_tag)
+			def ack():
+				ch.basic_ack(delivery_tag = method.delivery_tag)
+				logging.debug("ACK {}".format(body))
+
+			def nack():
+				ch.basic_nack(delivery_tag = method.delivery_tag)
+				logging.debug("NACK {}".format(body))
+			
 			self._handle_message(body, callback, ack, nack)
 			logger.info("Received on {} {}".format(self.queue, self.args.run))
 
-		self.channel.basic_qos(prefetch_count=1)
-		self.channel.basic_consume(_callback, queue=self.queue)
-		self.channel.start_consuming()
+		# self.channel.basic_qos(prefetch_count=1)
+		# self.channel.basic_consume(_callback, queue=self.queue)
+		# self.channel.start_consuming()
+
+		# ch = RabbitQueue.connection.channel()
+		gen = self.channel.consume(self.queue, inactivity_timeout=10)
+		
+		for i in gen:
+			logger.info("Consume loop for "+self.queue)
+			if i is  None:
+				break
+				# continue
+			else:
+				method, properties, body = i
+				_callback(self.channel, method, properties, body)
+
+		# ch.close()
+
 		# logger.info("Subscribed to {} {}".format(self.queue, self.args.run))
 
 	def close(self):
-		if RabbitQueue.connection is not None:
-			RabbitQueue.connection.close()
+		self.channel.cancel()
+		self.channel.close()
+
+		# if RabbitQueue.connection is not None:
+			# RabbitQueue.connection.close()
 
 
 class GoogleQueue(Queue):

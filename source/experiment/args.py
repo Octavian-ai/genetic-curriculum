@@ -17,8 +17,8 @@ def get_args(args=None):
 	parser.add_argument('--project',				type=str,  default=os.getenv("GOOGLE_CLOUD_PROJECT", "octavian-181621"))
 
 	parser.add_argument('--epochs', 				type=int,  default=1000)
-	parser.add_argument('--micro-step', 			type=int,  default=500)
-	parser.add_argument('--macro-step', 			type=int,  default=10)
+	parser.add_argument('--micro-step', 			type=int,  default=1000)
+	parser.add_argument('--macro-step', 			type=int,  default=5)
 
 	parser.add_argument('--batch-size', 			type=int,  default=32)
 	parser.add_argument('--n-workers', 				type=int,  default=os.getenv("N_WORKERS", 15))
@@ -26,7 +26,7 @@ def get_args(args=None):
 	parser.add_argument('--message-timeout', 		type=int,  default=60*5)
 	parser.add_argument('--sleep-per-cycle', 		type=int,  default=5)
 	parser.add_argument('--save-secs', 				type=int,  default=60*5)
-	parser.add_argument('--print-secs', 			type=int,  default=5)
+	parser.add_argument('--print-secs', 			type=int,  default=60)
 	
 	parser.add_argument('--lr',						type=float, default=1e-4)
 	parser.add_argument('--max-grad-norm',			type=float, default=50)

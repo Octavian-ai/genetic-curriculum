@@ -37,7 +37,8 @@ if __name__ == "__main__":
 	manager = None
 	drone = None
 
-	
+	logger.info("Start drone")
+	drone = get_drone(args)	
 
 	try:
 		while True:
@@ -48,26 +49,17 @@ if __name__ == "__main__":
 				if manager is None:
 					logger.info("Start supervisor")
 					manager = get_supervisor(args)
-
-				if drone is not None:
-					drone.close()
-					drone = None
 			else:
 				if manager is not None:
 					logger.info("Stop supervisor")
 					manager.close()
 					manager = None
 
-				if drone is None:
-					logger.info("Start drone")
-					drone = get_drone(args)
-
+			if drone is not None:
+				drone.run_epoch()
 
 			if manager is not None:
 				manager.run_epoch()
-
-			if drone is not None:
-				drone.run_epoch()
 
 			time.sleep(args.sleep_per_cycle)
 

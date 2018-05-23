@@ -79,9 +79,10 @@ class Supervisor(object):
 		epoch = self.save_epoch
 	
 		random_worker = random.choice(list(self.workers.values()))
-		for key in random_worker.results.keys():
-			if key not in self.measures:
-				self.measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
+		if random_worker.results is not None:
+			for key in random_worker.results.keys():
+				if key not in self.measures:
+					self.measures[key] = lambda i: i.results.get(key, -1) if i.results is not None else -1
 	
 		for key in self.measures.keys():
 			if key not in self.plot_measures:
@@ -193,10 +194,12 @@ class Supervisor(object):
 			stack.sort(key=self.score, reverse=self.reverse)
 			idx = stack.index(worker)
 
-			if idx < max(len(stack) * self.args.exploit_pct,1):
+			if len(stack) > 1 and idx < max(len(stack) * self.args.exploit_pct,1):
 				del self.workers[worker.id]
 				logger.info("del {}".format(worker.id))
 				self.add_worker()
+			else:
+				self.dispatch(worker)
 			
 
 			worker.recent_steps = 0
@@ -230,10 +233,6 @@ class Supervisor(object):
 					logger.info("del {}".format(result_spec.id))
 					del self.workers[result_spec.id]
 					self.add_worker()
-
-				ack()
-				return
-
 			else:
 				logger.warning("{} received results for < current total_steps".format(result_spec.id))
 		else:
@@ -252,11 +251,11 @@ class Supervisor(object):
 		self.queue_result.subscribe(lambda spec, ack, nack: self._handle_result(spec, ack, nack))
 
 	def run_epoch(self):
-		self.subscribe()
 		self.scale_workers()
 		self.dispatch_idle()
 		self.consider_save()
 		self.consider_print()
+		self.subscribe()
 
 
 

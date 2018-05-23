@@ -14,8 +14,8 @@ class MyHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/json')
         self.end_headers()
         hostname = platform.node()
-        if random.random() > 0.5:
-            hostname = "somewhere-else"
+        # if random.random() > 0.5:
+        #     hostname = "somewhere-else"
         self.wfile.write('{{"name":"{}"}}'.format(hostname).encode('utf-8'))
         return
 
