@@ -9,6 +9,7 @@ import requests
 import json
 import platform
 import time
+import pika
 
 from .helpers import *
 
@@ -43,25 +44,30 @@ if __name__ == "__main__":
 	try:
 		while True:
 
-			leader = i_am_leader(args)
+			try:
+				leader = i_am_leader(args)
 
-			if leader:
-				if manager is None:
-					logger.info("Start supervisor")
-					manager = get_supervisor(args)
-			else:
+				if leader:
+					if manager is None:
+						logger.info("Start supervisor")
+						manager = get_supervisor(args)
+				else:
+					if manager is not None:
+						logger.info("Stop supervisor")
+						manager.close()
+						manager = None
+
+				if drone is not None:
+					drone.run_epoch()
+
 				if manager is not None:
-					logger.info("Stop supervisor")
-					manager.close()
-					manager = None
+					manager.run_epoch()
 
-			if drone is not None:
-				drone.run_epoch()
+				time.sleep(args.sleep_per_cycle)
 
-			if manager is not None:
-				manager.run_epoch()
-
-			time.sleep(args.sleep_per_cycle)
+			# Hack to see if this works
+			except pika.exceptions.ConnectionClosed:
+				pass
 
 	except KeyboardInterrupt:
 		if manager is not None:
