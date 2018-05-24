@@ -1,7 +1,7 @@
 
 import logging, coloredlogs
 logger = logging.getLogger(__name__)
-coloredlogs.install(level='DEBUG',logger=logger)
+coloredlogs.install(level='INFO',logger=logger)
 
 import requests
 import json

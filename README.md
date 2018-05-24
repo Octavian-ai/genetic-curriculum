@@ -30,7 +30,14 @@ pipenv shell
 
 ## Deploying to Kubernetes
 
-Deploy `kubernetes/deploy.yaml` to your cluster
+Update secret.yaml to have the url to your AMQP queue.
+
+Deploy the config:
+
+```
+kubectl create -f kubernetes/secret.yaml
+kubectl create -f kubernetes/deployment.yaml
+```
 
 Set up permissions:
 ```

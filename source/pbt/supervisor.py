@@ -77,7 +77,7 @@ class Supervisor(object):
 
 	def get_sorted_workers(self):
 		"""Workers for which no score is known will not be returned"""
-		
+
 		stack = [i for i in self.workers.values() if self.score(i) is not None]
 		random.shuffle(stack)
 		stack.sort(key=self.score, reverse=self.reverse)
@@ -233,6 +233,7 @@ class Supervisor(object):
 	def dispatch_idle(self):
 		for i in self.workers.values():
 			if time.time() - i.time_last_updated > self.args.job_timeout:
+				logger.info('{}.dispatch_idle()'.format(i.id))
 				self.dispatch(i)
 
 

@@ -23,8 +23,8 @@ class DatasetParam(GeneticParam):
 
 		if self.v is None:
 			self.v = {
-				"length": RandIntRangeParamOf(1, 10)(),
-				"repeats": RandIntRangeParamOf(1, 10)(),
+				"length": RandIntRangeParamOf(1, 2)(),
+				"repeats": RandIntRangeParamOf(1, 5)(),
 			}
 
 
@@ -115,7 +115,8 @@ def get_drone(args):
 
 def score(worker):
 	try:
-		return (worker.results["loss"] + 1) / worker.results["total_elements"]
+		# return (worker.results["loss"] + 1) / worker.results["total_elements"]
+		return worker.results["correct_elements"]
 	except Exception:
 		return None
 
