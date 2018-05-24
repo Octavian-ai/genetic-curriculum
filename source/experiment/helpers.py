@@ -117,7 +117,7 @@ def score(worker):
 	try:
 		return (worker.results["loss"] + 1) / worker.results["total_elements"]
 	except Exception:
-		return 100
+		return None
 
 
 def get_supervisor(args):

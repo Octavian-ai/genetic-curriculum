@@ -25,7 +25,7 @@ def get_args(args=None):
 	parser.add_argument('--job-timeout', 			type=int,  default=60*10)
 	parser.add_argument('--message-timeout', 		type=int,  default=60*5)
 	parser.add_argument('--sleep-per-cycle', 		type=int,  default=5)
-	parser.add_argument('--save-secs', 				type=int,  default=60*5)
+	parser.add_argument('--save-secs', 				type=int,  default=30)
 	parser.add_argument('--print-secs', 			type=int,  default=60)
 	
 	parser.add_argument('--lr',						type=float, default=1e-4)
@@ -42,6 +42,7 @@ def get_args(args=None):
 
 	parser.add_argument('--disable-save',			action='store_false',dest="save")
 	parser.add_argument('--disable-load',			action='store_false',dest="load")
+	parser.add_argument('--master-works', 			action='store_true',help="Master will also act as drone")
 
 	parser.add_argument('--n-baselines', 			type=int,  default=None)
 	parser.add_argument('--queue-type',				type=str,  default="rabbitmq", choices=["rabbitmq","google"])

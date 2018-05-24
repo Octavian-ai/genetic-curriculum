@@ -75,6 +75,14 @@ class Supervisor(object):
 			
 		self.time_last_save = time.time()
 
+	def get_sorted_workers(self):
+		"""Workers for which no score is known will not be returned"""
+		
+		stack = [i for i in self.workers.values() if self.score(i) is not None]
+		random.shuffle(stack)
+		stack.sort(key=self.score, reverse=self.reverse)
+		return stack
+
 	def print(self):
 		epoch = self.save_epoch
 
@@ -84,15 +92,15 @@ class Supervisor(object):
 				try:
 					return worker.results[result_key]
 				except Exception:
-					return -1
+					return None
 
 			self.measures[result_key] = get_metric
 	
-		random_worker = random.choice(list(self.workers.values()))
-		if random_worker.results is not None:
-			for result_key in random_worker.results.keys():
-				if result_key not in self.measures:
-					add_measure(result_key)
+		for worker in self.workers.values():
+			if worker.results is not None:
+				for result_key in worker.results.keys():
+					if result_key not in self.measures:
+						add_measure(result_key)
 					
 	
 		for key in self.measures.keys():
@@ -103,23 +111,25 @@ class Supervisor(object):
 			for key, val in worker.params.items():
 				if not isinstance(val, FixedParam):
 					if isinstance(val.metric, int) or isinstance(val.metric, float):
-						plot.add_result(epoch, val.metric, prefix+key+suffix)
+						if val.metric is not None:
+							plot.add_result(epoch, val.metric, prefix+key+suffix)
 					elif isinstance(val.metric, dict):
 						for mkey, mval in val.metric.items():
 							if isinstance(mval, int) or isinstance(mval, float):
-								plot.add_result(epoch, mval, prefix+key+"_"+mkey+suffix)
+								if mval is not None:
+									plot.add_result(epoch, mval, prefix+key+"_"+mkey+suffix)
 
 
-		stack = list(self.workers.values())
-		stack.sort(key=self.score,reverse=self.reverse)
+		stack = self.get_sorted_workers()
 		
 		for idx, worker in enumerate(stack):
-			for key, value in self.plot_measures.items():
-				logger.info("value add_result {}, {}, {}, {}, {}".format(value, key, self.measures[key](worker), str(idx), worker.results))
-				value.add_result(epoch, self.measures[key](worker), str(idx))
+			for key, plot in self.plot_measures.items():
+				val = self.measures[key](worker)
+				if val is not None:
+					plot.add_result(epoch, val, str(idx))
 
 		for key, fn in self.measures.items():
-			vs = [fn(i) for i in self.workers.values()]
+			vs = [fn(i) for i in self.workers.values() if fn(i) is not None]
 
 			if len(vs) > 0:
 				best = max(vs)
@@ -159,9 +169,7 @@ class Supervisor(object):
 				self.remove_worker()
 
 	def get_mentor(self):
-		stack = list(self.workers.values())
-		random.shuffle(stack) # Tie-break randomly
-		stack = sorted(stack, key=self.score, reverse=self.reverse)
+		stack = self.get_sorted_workers()
 		
 		n20 = max(round(len(self.workers) * self.args.exploit_pct), 1)
 		top20 = stack[-n20:]
@@ -194,16 +202,14 @@ class Supervisor(object):
 
 	def remove_worker(self):
 		if len(self.workers) > 0:
-			stack = list(self.workers.values())
-			stack.sort(key=self.score, reverse=self.reverse)
+			stack = self.get_sorted_workers()
 			del self.workers[stack[0].id]	
 
 
 	def consider_exploit(self, worker):
 		if worker.recent_steps >= self.args.micro_step * self.args.macro_step:
 
-			stack = list(self.workers.values())
-			stack.sort(key=self.score, reverse=self.reverse)
+			stack = self.get_sorted_workers()
 			idx = stack.index(worker)
 
 			if len(stack) > 1 and idx < max(len(stack) * self.args.exploit_pct,1):
@@ -221,7 +227,7 @@ class Supervisor(object):
 		"""Request drone runs this worker"""
 		run_spec = worker.gen_run_spec(self.args)
 		self.queue_run.send(run_spec)
-		logger.info('{}.dispatch()'.format(worker.id))
+		logger.info('{}.dispatch({},{})'.format(worker.id, run_spec.macro_step, run_spec.micro_step))
 		worker.time_last_updated = time.time()
 
 	def dispatch_idle(self):

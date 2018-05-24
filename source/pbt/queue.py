@@ -60,11 +60,11 @@ class QueueFactory(object):
 
 class RabbitQuickChannel(object):
 
-	def __init__(self, args, queue):
+	def __init__(self, args, queue, exchange, topic):
 		self.args = args
-		self.topic = args.run
+		self.topic = topic
 		self.queue = queue
-		self.exchange = queue + "_exchange"
+		self.exchange = exchange
 
 		parameters = pika.URLParameters(args.amqp_url)
 		self.connection = pika.BlockingConnection(parameters)
@@ -73,15 +73,15 @@ class RabbitQuickChannel(object):
 
 	def _open_channel(self):
 		channel = self.connection.channel()
-		
+		channel.basic_qos(prefetch_count=1)
+
+		channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
 		channel.queue_declare(
 			queue=self.queue, 
 			durable=True,
 			arguments={'x-message-ttl' : 1000*self.args.message_timeout})
-		channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+		channel.queue_bind(queue=self.queue, exchange=self.exchange, routing_key=self.topic)
 
-		channel.basic_qos(prefetch_count=1)
-		channel.queue_bind(self.queue, self.exchange, self.topic)
 		return channel
 
 	def __enter__(self):
@@ -100,37 +100,19 @@ class RabbitQueue(Queue):
 		super().__init__(args)
 
 		self.topic = args.run
-		self.queue = queue
+		self.queue = queue + "_" + self.topic
 		self.exchange = queue + "_exchange"
 
 		self.logger = logging.getLogger(__name__ + "." + queue + "." + self.topic)
 
-		# if RabbitQueue.connection is None:
-		# 	parameters = pika.URLParameters(args.amqp_url)
-		# 	RabbitQueue.connection = pika.BlockingConnection(parameters)
-		
-		# self.channel = self._open_channel()
-
-	# def _open_channel(self):
-	# 	channel = RabbitQueue.connection.channel()
-		
-	# 	channel.queue_declare(
-	# 		queue=self.queue, 
-	# 		durable=True,
-	# 		arguments={'x-message-ttl' : 1000*self.args.message_timeout})
-	# 	channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
-
-	# 	channel.basic_qos(prefetch_count=1)
-	# 	channel.queue_bind(self.queue, self.exchange, self.args.run)
-	# 	return channel
 
 	def send(self, message):
 		message = pickle.dumps(message)
 
-		with RabbitQuickChannel(self.args, self.queue) as channel:
+		with RabbitQuickChannel(self.args, self.queue, self.exchange, self.topic) as channel:
 			channel.basic_publish(
 				exchange=self.exchange,
-				routing_key=self.args.run,
+				routing_key=self.topic,
 				body=message,
 				properties=pika.BasicProperties(
 					delivery_mode = 2, # make message persistent
@@ -151,12 +133,13 @@ class RabbitQueue(Queue):
 			self.logger.debug("Received")
 			self._handle_message(body, callback, ack, nack)
 
-		with RabbitQuickChannel(self.args, self.queue) as channel:
-			method, properties, body = channel.basic_get(self.queue)
-			if method is not None:
-				channel.basic_ack(delivery_tag = method.delivery_tag)
+		with RabbitQuickChannel(self.args, self.queue, self.exchange, self.topic) as channel:
+			method, properties, body = channel.basic_get(queue=self.queue, no_ack=True)
+				
+			# if method is not None:
+			# 	channel.basic_ack(delivery_tag = method.delivery_tag)
 
-		self.logger.debug("Received {} {} {}".format(method, properties, body))
+		self.logger.debug("Received {} {} {} on {}".format(method, properties, body, self.queue))
 
 		if body is not None:
 			self._handle_message(body, callback, lambda:True, lambda:True)

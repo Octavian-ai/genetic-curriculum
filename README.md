@@ -5,25 +5,39 @@ Welcome to this installment of DeepMind mashup.
 For background, read up on [Differentiable Neural Computers](https://deepmind.com/blog/differentiable-neural-computers/) and [Population Based Training](https://deepmind.com/blog/population-based-training-neural-networks/).
 
 
-To train run two seperate processes:
+### Prerequisites
+
+- You need to have an AMQP queue server (the default is localhost)
+
+
+### Run local:
+
+To run the system locally as single process:
 ```shell
-python -m src.manage --group my_name
-python -m src.drone --group my_name
+pipenv install
+pipenv shell
+
+python -m experiment.k8 --master-works
 ```
 
 
 To test:
 ```shell
-./test.sh
+pipenv shell
+./script/test.sh
 ```
 
 
 ## Deploying to Kubernetes
 
+Deploy `kubernetes/deploy.yaml` to your cluster
+
+Set up permissions:
 ```
 kubectl create serviceaccount default --namespace default
 kubectl create clusterrolebinding default-cluster-rule --clusterrole=cluster-admin --serviceaccount=default:default
 ```
+
 
 To see dashboard:
 ```

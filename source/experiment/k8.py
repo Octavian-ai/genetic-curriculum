@@ -36,36 +36,35 @@ if __name__ == "__main__":
 	manager = None
 	drone = None
 
-	logger.info("Start drone")
-	drone = get_drone(args)	
-
 	try:
 		while True:
+			am_leader = i_am_leader(args)
+			am_drone = not am_leader or args.master_works
 
-			try:
-				leader = i_am_leader(args)
+			if am_leader and manager is None:
+					logger.info("Start supervisor")
+					manager = get_supervisor(args)
+			elif not am_leader and manager is not None:
+					logger.info("Stop supervisor")
+					manager.close()
+					manager = None
 
-				if leader:
-					if manager is None:
-						logger.info("Start supervisor")
-						manager = get_supervisor(args)
-				else:
-					if manager is not None:
-						logger.info("Stop supervisor")
-						manager.close()
-						manager = None
+			if am_drone and drone is None:
+				logger.info("Start drone")
+				drone = get_drone(args)	
+			elif not am_drone and drone is not None:
+				drone.close()
+				drone = None
 
-				if drone is not None:
-					drone.run_epoch()
+			if drone is not None:
+				drone.run_epoch()
 
-				if manager is not None:
-					manager.run_epoch()
+			if manager is not None:
+				manager.run_epoch()
 
-				time.sleep(args.sleep_per_cycle)
+			time.sleep(args.sleep_per_cycle)
 
-			# Hack to see if this works
-			except pika.exceptions.ConnectionClosed:
-				pass
+
 
 	except KeyboardInterrupt:
 		if manager is not None:
