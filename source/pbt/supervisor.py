@@ -259,15 +259,15 @@ class Supervisor(object):
 		self.queue_result.close()
 		self.queue_run.close()
 	
-	def subscribe(self):
-		self.queue_result.subscribe(lambda spec, ack, nack: self._handle_result(spec, ack, nack))
+	def get_messages(self):
+		self.queue_result.get_messages(lambda spec, ack, nack: self._handle_result(spec, ack, nack))
 
 	def run_epoch(self):
 		self.scale_workers()
 		self.dispatch_idle()
 		self.consider_save()
 		self.consider_print()
-		self.subscribe()
+		self.get_messages()
 
 
 

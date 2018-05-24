@@ -90,12 +90,12 @@ class Drone(object):
 
 
 
-	def subscribe(self):
-		self.queue_run.subscribe(lambda data, ack, nack: self._handle_message(data, ack, nack))
+	def get_messages(self):
+		self.queue_run.get_messages(lambda data, ack, nack: self._handle_message(data, ack, nack))
 		
 
 	def run_epoch(self):
-		self.subscribe()
+		self.get_messages()
 
 	def close(self):
 		self.queue_run.close()

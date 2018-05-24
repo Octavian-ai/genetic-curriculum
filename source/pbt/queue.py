@@ -18,7 +18,7 @@ class Queue(object):
 	def send(self, message):
 		pass
 
-	def subscribe(self, callback):
+	def get_messages(self, callback):
 		"""
 			callback: (spec, ack, nack) -> None
 			It's expected that callback will ack/nack the message
@@ -43,9 +43,6 @@ class Queue(object):
 			logger.debug("Timed out message")
 			ack()
 
-	def ensure_subscribed(self, callback):
-		pass
-
 	def close(self, callback):
 		pass
 
@@ -61,6 +58,40 @@ class QueueFactory(object):
 			raise ValueError(args.queue_type)
 
 
+class RabbitQuickChannel(object):
+
+	def __init__(self, args, queue):
+		self.args = args
+		self.topic = args.run
+		self.queue = queue
+		self.exchange = queue + "_exchange"
+
+		parameters = pika.URLParameters(args.amqp_url)
+		self.connection = pika.BlockingConnection(parameters)
+
+		self.channel = self._open_channel()
+
+	def _open_channel(self):
+		channel = self.connection.channel()
+		
+		channel.queue_declare(
+			queue=self.queue, 
+			durable=True,
+			arguments={'x-message-ttl' : 1000*self.args.message_timeout})
+		channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+
+		channel.basic_qos(prefetch_count=1)
+		channel.queue_bind(self.queue, self.exchange, self.topic)
+		return channel
+
+	def __enter__(self):
+		return self.channel
+
+	def __exit__(self ,type, value, traceback):
+		self.channel.close()
+		self.connection.close()
+
+
 class RabbitQueue(Queue):
 
 	connection = None
@@ -68,73 +99,89 @@ class RabbitQueue(Queue):
 	def __init__(self, args, queue):
 		super().__init__(args)
 
-		if RabbitQueue.connection is None:
-			parameters = pika.URLParameters(args.amqp_url)
-			RabbitQueue.connection = pika.BlockingConnection(parameters)
-
+		self.topic = args.run
 		self.queue = queue
 		self.exchange = queue + "_exchange"
-		self.channel = RabbitQueue.connection.channel()
-		self.channel.queue_declare(
-			queue=self.queue, 
-			durable=True,
-			arguments={'x-message-ttl' : 60*10})
 
-		self.channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+		self.logger = logging.getLogger(__name__ + "." + queue + "." + self.topic)
 
-		self.channel.queue_bind(self.queue, self.exchange, self.args.run)
+		# if RabbitQueue.connection is None:
+		# 	parameters = pika.URLParameters(args.amqp_url)
+		# 	RabbitQueue.connection = pika.BlockingConnection(parameters)
+		
+		# self.channel = self._open_channel()
+
+	# def _open_channel(self):
+	# 	channel = RabbitQueue.connection.channel()
+		
+	# 	channel.queue_declare(
+	# 		queue=self.queue, 
+	# 		durable=True,
+	# 		arguments={'x-message-ttl' : 1000*self.args.message_timeout})
+	# 	channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+
+	# 	channel.basic_qos(prefetch_count=1)
+	# 	channel.queue_bind(self.queue, self.exchange, self.args.run)
+	# 	return channel
 
 	def send(self, message):
 		message = pickle.dumps(message)
-		self.channel.basic_publish(
-			exchange=self.exchange,
-			routing_key=self.args.run,
-			body=message,
-			properties=pika.BasicProperties(
-				delivery_mode = 2, # make message persistent
-			))
-		logger.info("Sent to {} {}".format(self.queue, self.args.run))
 
-	def subscribe(self, callback):
+		with RabbitQuickChannel(self.args, self.queue) as channel:
+			channel.basic_publish(
+				exchange=self.exchange,
+				routing_key=self.args.run,
+				body=message,
+				properties=pika.BasicProperties(
+					delivery_mode = 2, # make message persistent
+				))
+			self.logger.debug("Sent")
+
+	def get_messages(self, callback):
 		
 		def _callback(ch, method, properties, body):
 			def ack():
 				ch.basic_ack(delivery_tag = method.delivery_tag)
-				logging.debug("ACK {}".format(body))
+				self.logger.debug("ACK {}".format(body))
 
 			def nack():
 				ch.basic_nack(delivery_tag = method.delivery_tag)
-				logging.debug("NACK {}".format(body))
+				self.logger.debug("NACK {}".format(body))
 			
+			self.logger.debug("Received")
 			self._handle_message(body, callback, ack, nack)
-			logger.info("Received on {} {}".format(self.queue, self.args.run))
 
-		# self.channel.basic_qos(prefetch_count=1)
-		# self.channel.basic_consume(_callback, queue=self.queue)
-		# self.channel.start_consuming()
+		with RabbitQuickChannel(self.args, self.queue) as channel:
+			method, properties, body = channel.basic_get(self.queue)
+			if method is not None:
+				channel.basic_ack(delivery_tag = method.delivery_tag)
 
-		# ch = RabbitQueue.connection.channel()
-		gen = self.channel.consume(self.queue, inactivity_timeout=10)
+		self.logger.debug("Received {} {} {}".format(method, properties, body))
+
+		if body is not None:
+			self._handle_message(body, callback, lambda:True, lambda:True)
+
+			# _callback(channel, method, properties, body)
 		
-		for i in gen:
-			logger.info("Consume loop for "+self.queue)
-			if i is  None:
-				break
-				# continue
-			else:
-				method, properties, body = i
-				_callback(self.channel, method, properties, body)
-
-		# ch.close()
+		# for i in gen:
+		# 	logger.info("Consume loop for "+self.queue)
+		# 	if i is  None:
+		# 		break
+		# 		# continue
+		# 	else:
+		
+		# channel.cancel()
+		# channel.close()
 
 		# logger.info("Subscribed to {} {}".format(self.queue, self.args.run))
 
 	def close(self):
-		self.channel.cancel()
-		self.channel.close()
+		# self.channel.cancel()
+		# self.channel.close()
 
 		# if RabbitQueue.connection is not None:
 			# RabbitQueue.connection.close()
+		pass
 
 
 class GoogleQueue(Queue):
@@ -157,7 +204,7 @@ class GoogleQueue(Queue):
 		data = pickle.dumps(message)
 		self.pub_client.publish(self.topic_path, data=data)
 
-	def subscribe(self, callback):
+	def get_messages(self, callback):
 		if self.sub_client is None:
 			self.sub_client = pubsub_v1.SubscriberClient(Policy)
 			self.sub_path = self.sub_client.subscription_path(self.args.project, self.sub_name)
@@ -168,7 +215,7 @@ class GoogleQueue(Queue):
 				flow_control=pubsub_v1.types.FlowControl(max_messages=1)
 			)
 
-		# logger.info("Subscribed to {} {}".format(self.sub_path, self.args.run))
+		self.logger.debug("Subscribed")
 
 
 	def close(self):

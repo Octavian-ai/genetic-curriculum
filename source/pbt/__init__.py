@@ -14,4 +14,6 @@ from .supervisor_test import SupervisorTestCase
 from .param_test import ParamTestCase
 
 import logging
-logging.getLogger(__name__).setLevel('INFO')
+import coloredlogs
+logger = logging.getLogger(__name__)
+coloredlogs.install(level='DEBUG',logger=logger)
