@@ -18,7 +18,7 @@ def get_args(args=None):
 
 	parser.add_argument('--epochs', 				type=int,  default=1000)
 	parser.add_argument('--micro-step', 			type=int,  default=1000)
-	parser.add_argument('--macro-step', 			type=int,  default=5)
+	parser.add_argument('--macro-step', 			type=int,  default=30)
 
 	parser.add_argument('--batch-size', 			type=int,  default=32)
 	parser.add_argument('--n-workers', 				type=int,  default=os.getenv("N_WORKERS", 15))

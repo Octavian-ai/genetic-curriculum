@@ -122,7 +122,7 @@ def score(worker):
 
 
 def get_supervisor(args):
-	return Supervisor(args, gen_param_spec(args), score, True)
+	return Supervisor(args, gen_param_spec(args), score, False)
 
 
 
