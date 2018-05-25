@@ -37,6 +37,7 @@ class Supervisor(object):
 		self.measures = {
 			"score": self.score
 		}
+		self.ensure_has_measure("score")
 
 		self.queue_result = QueueFactory.vend(self.args, "pbt_result")
 		self.queue_run = QueueFactory.vend(self.args, "pbt_run")
@@ -66,7 +67,6 @@ class Supervisor(object):
 
 
 	def save(self):
-
 		logger.debug("Saving workers to " + self.file_path)
 
 		with FileWritey(self.args, "workers.pkl", True) as file:
@@ -112,6 +112,7 @@ class Supervisor(object):
 			for key in worker.results:
 				self.ensure_has_measure(key)
 
+			for key in self.measures:
 				val = self.measures[key](worker)
 				if val is not None:
 					plot = self.plot_measures[key]
