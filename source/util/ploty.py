@@ -4,10 +4,12 @@ import tensorflow as tf
 import csv
 import sys
 import os.path
+import pickle
 
 import logging
 logger = logging.getLogger(__name__)
 
+from .file import FileWritey, FileReadie
 
 # --------------------------------------------------------------------------
 # Some environments have these components. Try to load them, and if they
@@ -33,7 +35,6 @@ except ImportError as e:
   pass
 
 
-from .file import FileWritey
 
 class Ploty(object):
 
@@ -73,6 +74,14 @@ class Ploty(object):
     except Exception:
       self.cmap = None
       pass
+
+  def load(self):
+    try:
+      with FileReadie(self.args, self.pkl_filename, True) as file:
+        self.datas = pickle.load(file)
+
+    except FileNotFoundError:
+      self.datas = {}
     
     
   def ensure(self, name, extra_data):
@@ -154,6 +163,11 @@ class Ploty(object):
     return self.title.replace(" ", "_") + '.png'
   
   @property
+  def pkl_filename(self):
+    return self.title.replace(" ", "_") + '.pkl'
+  
+  
+  @property
   def csv_file_path(self):
     return os.path.join(self.args.output_dir, self.args.run, self.csv_filename)
 
@@ -168,11 +182,15 @@ class Ploty(object):
 
   def write(self):
     self.save_csv()
+    self.save_pkl()
 
     if self.is_png_enabled:
       self.render()
 
 
+  def save_pkl(self):
+    with FileWritey(self.args, self.pkl_filename, True) as file:
+        pickle.dump(self.datas, file)
     
   
   def save_csv(self):

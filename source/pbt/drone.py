@@ -44,6 +44,11 @@ class Drone(object):
 		self.queue_result.send(result_spec)
 		logger.info("{}.send_result({})".format(worker.id, result_spec))
 
+	def _send_heartbeat(self, worker):
+		spec = HeartbeatSpec(self.args.run, worker.id, time.time())
+		self.queue_result.send(spec)
+		logger.debug("{}.send_heartbeat()".format(worker.id))		
+
 
 	def _handle_message(self, run_spec, ack, nack):
 
@@ -60,7 +65,7 @@ class Drone(object):
 			time_start = time.time()
 			logger.info("{}.step_and_eval({}, {})".format(run_spec.id, run_spec.macro_step, run_spec.micro_step))
 			for i in range(run_spec.macro_step):
-				worker.step_and_eval(run_spec.micro_step)
+				worker.step_and_eval(run_spec.micro_step, lambda:self._send_heartbeat(worker))
 				self._send_result(run_spec, worker, True)
 
 			self.performance.append(Perf(time_start, time.time(), run_spec.micro_step * run_spec.macro_step))

@@ -25,6 +25,8 @@ ResultSpec = collections.namedtuple('ResultSpec', [
 	'total_steps',
 	'time_sent'])
 
+HeartbeatSpec = collections.namedtuple('HeartbeatSpec', ['group', 'id', 'time_sent'])
+
 
 
 class WorkerHeader(object):

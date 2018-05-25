@@ -16,7 +16,7 @@ from util import Ploty
 from .specs import *
 from .param import FixedParam
 from .queue import QueueFactory
-from util import FileWritey, FileReady
+from util import FileWritey, FileReadie
 
 class Supervisor(object):
 
@@ -31,7 +31,6 @@ class Supervisor(object):
 		self.time_last_save = time.time()
 		self.time_last_print = time.time()
 		self.print_dirty = False
-		self.save_epoch = 0
 
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
 		self.plot_measures = {}
@@ -53,7 +52,7 @@ class Supervisor(object):
 		logger.info("Trying to load workers from " + self.file_path)
 	
 		try:
-			with FileReady(self.args, "workers.pkl", True) as file:
+			with FileReadie(self.args, "workers.pkl", True) as file:
 				self.workers = pickle.load(file)
 				logger.info("Loaded {} workers".format(len(self.workers)))
 				
@@ -61,6 +60,9 @@ class Supervisor(object):
 			self.workers = {}
 
 		self.time_last_save = time.time()
+
+		self.plot_progress.load()
+
 
 
 	def save(self):
@@ -84,8 +86,6 @@ class Supervisor(object):
 		return stack
 
 	def print(self):
-		epoch = self.save_epoch
-
 		# Closure so we capture result_key
 		def add_measure(result_key):
 			def get_metric(worker):
@@ -106,18 +106,20 @@ class Supervisor(object):
 		for key in self.measures.keys():
 			if key not in self.plot_measures:
 				self.plot_measures[key] = Ploty(self.args, title="Metric "+key, x='Time', y=key)
+				if self.args.load:
+					self.plot_measures[key].load()
 
-		def plot_param_metrics(plot, epoch, worker, prefix="", suffix=""):
+		def plot_param_metrics(plot, worker, prefix="", suffix=""):
 			for key, val in worker.params.items():
 				if not isinstance(val, FixedParam):
 					if isinstance(val.metric, int) or isinstance(val.metric, float):
 						if val.metric is not None:
-							plot.add_result(epoch, val.metric, prefix+key+suffix)
+							plot.add_result(time.time(), val.metric, prefix+key+suffix)
 					elif isinstance(val.metric, dict):
 						for mkey, mval in val.metric.items():
 							if isinstance(mval, int) or isinstance(mval, float):
 								if mval is not None:
-									plot.add_result(epoch, mval, prefix+key+"_"+mkey+suffix)
+									plot.add_result(time.time(), mval, prefix+key+"_"+mkey+suffix)
 
 
 		stack = self.get_sorted_workers()
@@ -126,7 +128,7 @@ class Supervisor(object):
 			for key, plot in self.plot_measures.items():
 				val = self.measures[key](worker)
 				if val is not None:
-					plot.add_result(epoch, val, str(idx))
+					plot.add_result(time.time(), val, str(idx))
 
 		for key, fn in self.measures.items():
 			vs = [fn(i) for i in self.workers.values() if fn(i) is not None]
@@ -134,19 +136,19 @@ class Supervisor(object):
 			if len(vs) > 0:
 				best = max(vs)
 				worst = min(vs)
-				self.plot_progress.add_result(epoch, best, key+"_max")
-				self.plot_progress.add_result(epoch, worst, key+"_min")
+				self.plot_progress.add_result(time.time(), best, key+"_max")
+				self.plot_progress.add_result(time.time(), worst, key+"_min")
 
-		self.plot_progress.add_result(epoch, len(self.workers), "n_workers")
+		self.plot_progress.add_result(time.time(), len(self.workers), "n_workers")
 
-		best_worker = stack[-1]
-		plot_param_metrics(self.plot_progress, epoch, best_worker, suffix="_best")
+		if len(stack) > 0:
+			best_worker = stack[-1]
+			plot_param_metrics(self.plot_progress, best_worker, suffix="_best")
 
 		self.plot_progress.write()
 		for value in self.plot_measures.values():
 			value.write()
 
-		self.save_epoch += 1
 		self.print_dirty = False
 
 	def consider_save(self):
@@ -237,25 +239,32 @@ class Supervisor(object):
 				self.dispatch(i)
 
 
-	def _handle_result(self, result_spec, ack, nack):		
-		if result_spec.id in self.workers:
-			i = self.workers[result_spec.id]
+	def _handle_result(self, spec, ack, nack):		
+		if spec.id in self.workers:
+			i = self.workers[spec.id]
 
-			if result_spec.total_steps >= i.total_steps:
-				self.print_dirty = True
+			if isinstance(spec, HeartbeatSpec):
+				i.time_last_updated = time.time()
 
-				if result_spec.success:
-					i.update_from_result_spec(result_spec)
-					logger.info("{}.record_result({})".format(result_spec.id, result_spec))
-					self.consider_exploit(i)
+			elif isinstance(spec, ResultSpec):
+				if spec.total_steps >= i.total_steps:
+					self.print_dirty = True
+
+					if spec.success:
+						i.update_from_result_spec(spec)
+						logger.info("{}.record_result({})".format(spec.id, spec))
+						self.consider_exploit(i)
+					else:
+						logger.info("del {}".format(spec.id))
+						del self.workers[spec.id]
+						self.add_worker()
 				else:
-					logger.info("del {}".format(result_spec.id))
-					del self.workers[result_spec.id]
-					self.add_worker()
+					logger.warning("{} received results for < current total_steps".format(spec.id))
+
 			else:
-				logger.warning("{} received results for < current total_steps".format(result_spec.id))
+				logger.warning("Received unknown message type {}".format(type(spec)))
 		else:
-			logger.debug("{} worker not found for message {}".format(result_spec.id, result_spec))
+			logger.debug("{} worker not found for message {}".format(spec.id, spec))
 
 		# Swallow bad messages
 		# The design is for the supervisor to re-send and to re-spawn drones

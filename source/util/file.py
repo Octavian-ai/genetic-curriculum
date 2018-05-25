@@ -33,7 +33,7 @@ class FileThingy(object):
   
   
 
-class FileReady(FileThingy):
+class FileReadie(FileThingy):
   """Tries to write on traditional filesystem and Google Cloud storage"""
 
   def __init__(self, args, filename, binary=False):
