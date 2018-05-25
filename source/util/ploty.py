@@ -123,6 +123,9 @@ class Ploty(object):
       # clear_output()
 
     plt.cla()
+    self.fig.suptitle(self.title, fontsize=14, fontweight='bold')
+    self.ax.set_xlabel(self.label_x)
+    self.ax.set_ylabel(self.label_y)
   
   def render(self):
     self.render_pre()
@@ -133,9 +136,6 @@ class Ploty(object):
     self.render_post()
     
   def render_post(self):
-    self.fig.suptitle(self.title, fontsize=14, fontweight='bold')
-    self.ax.set_xlabel(self.label_x)
-    self.ax.set_ylabel(self.label_y)
     
     artists = []
     if self.legend:

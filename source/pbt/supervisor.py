@@ -85,31 +85,42 @@ class Supervisor(object):
 		stack.sort(key=self.score, reverse=self.reverse)
 		return stack
 
+	def ensure_has_measure(self, key):
+		def get_metric(worker):
+			try:
+				return worker.results[key]
+			except Exception:
+				return None
+
+		if key not in self.measures:
+			self.measures[key] = get_metric
+
+		if key not in self.plot_measures:
+			self.plot_measures[key] = Ploty(self.args, title="Metric "+key, x='Time', y=key)
+			if self.args.load:
+				self.plot_measures[key].load()
+
+
+	def print_worker_results(self, worker):
+		if worker.results is not None:
+
+			try:
+				name = worker.params["heritage"].value
+			except:
+				name = str(worker.id)
+
+			for key in worker.results:
+				self.ensure_has_measure(key)
+
+				val = self.measures[key](worker)
+				if val is not None:
+					plot = self.plot_measures[key]
+					plot.add_result(time.time(), val, name)
+					plot.write()
+			
+
 	def print(self):
 		logger.debug("Printing worker performance")
-
-		# Closure so we capture result_key
-		def add_measure(result_key):
-			def get_metric(worker):
-				try:
-					return worker.results[result_key]
-				except Exception:
-					return None
-
-			self.measures[result_key] = get_metric
-	
-		for worker in self.workers.values():
-			if worker.results is not None:
-				for result_key in worker.results.keys():
-					if result_key not in self.measures:
-						add_measure(result_key)
-					
-	
-		for key in self.measures.keys():
-			if key not in self.plot_measures:
-				self.plot_measures[key] = Ploty(self.args, title="Metric "+key, x='Time', y=key)
-				if self.args.load:
-					self.plot_measures[key].load()
 
 		def plot_param_metrics(plot, worker, prefix="", suffix=""):
 			for key, val in worker.params.items():
@@ -125,12 +136,6 @@ class Supervisor(object):
 
 
 		stack = self.get_sorted_workers()
-		
-		for idx, worker in enumerate(stack):
-			for key, plot in self.plot_measures.items():
-				val = self.measures[key](worker)
-				if val is not None:
-					plot.add_result(time.time(), val, str(worker.id))
 
 		for key, fn in self.measures.items():
 			vs = [fn(i) for i in self.workers.values() if fn(i) is not None]
@@ -148,8 +153,6 @@ class Supervisor(object):
 			plot_param_metrics(self.plot_progress, best_worker, suffix="_best")
 
 		self.plot_progress.write()
-		for value in self.plot_measures.values():
-			value.write()
 
 		self.print_dirty = False
 
@@ -255,6 +258,7 @@ class Supervisor(object):
 
 					if spec.success:
 						i.update_from_result_spec(spec)
+						self.print_worker_results(i)
 						logger.info("{}.record_result({})".format(spec.id, spec))
 						self.consider_exploit(i)
 					else:
