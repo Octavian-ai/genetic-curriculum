@@ -39,7 +39,7 @@ class FileReadie(FileThingy):
   def __init__(self, args, filename, binary=False):
     super().__init__(args, filename)
     self.trad_file = None
-    self.open_str = "rb" if binary else "r" 
+    self.binary = binary
 
   def copy_from_bucket(self):
     if 'google.cloud' in sys.modules and self.args.bucket is not None and self.args.gcs_dir is not None:
@@ -47,7 +47,7 @@ class FileReadie(FileThingy):
       bucket = client.get_bucket(self.args.bucket)
       blob2 = bucket.blob(self.gcs_path)
       os.makedirs(self.file_dir, exist_ok=True)
-      with open(self.file_path, self.open_str) as dest_file:
+      with open(self.file_path, "wb" if self.binary else "w") as dest_file:
         try:
           blob2.download_to_file(dest_file)
         except google.cloud.exceptions.NotFound:
@@ -55,7 +55,7 @@ class FileReadie(FileThingy):
 
   def __enter__(self):
     self.copy_from_bucket()
-    self.trad_file = open(self.file_path, self.open_str)
+    self.trad_file = open(self.file_path, "rb" if self.binary else "r" )
     return self.trad_file
 
   def __exit__(self, type, value, traceback):

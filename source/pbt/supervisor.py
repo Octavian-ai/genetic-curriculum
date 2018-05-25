@@ -67,7 +67,7 @@ class Supervisor(object):
 
 	def save(self):
 
-		logger.info("Saving workers to " + self.file_path)
+		logger.debug("Saving workers to " + self.file_path)
 
 		with FileWritey(self.args, "workers.pkl", True) as file:
 			pickle.dump(self.workers, file)
@@ -86,6 +86,8 @@ class Supervisor(object):
 		return stack
 
 	def print(self):
+		logger.debug("Printing worker performance")
+
 		# Closure so we capture result_key
 		def add_measure(result_key):
 			def get_metric(worker):
@@ -245,7 +247,7 @@ class Supervisor(object):
 
 			if isinstance(spec, HeartbeatSpec):
 				i.time_last_updated = time.time()
-				logger.info("{}.record_heartbeat()".format(spec.id))
+				logger.debug("{}.record_heartbeat()".format(spec.id))
 
 			elif isinstance(spec, ResultSpec):
 				if spec.total_steps >= i.total_steps:

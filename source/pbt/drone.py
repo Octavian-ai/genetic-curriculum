@@ -25,6 +25,7 @@ class Drone(object):
 
 		self.performance = []
 		self.steps_per_sec = 0
+		self.time_last_heartbeat = 0
 
 		self.queue_result = QueueFactory.vend(self.args, "pbt_result")
 		self.queue_run = QueueFactory.vend(self.args, "pbt_run")
@@ -45,9 +46,11 @@ class Drone(object):
 		logger.info("{}.send_result({})".format(worker.id, result_spec))
 
 	def _send_heartbeat(self, worker):
-		spec = HeartbeatSpec(self.args.run, worker.id, time.time())
-		self.queue_result.send(spec)
-		logger.debug("{}.send_heartbeat()".format(worker.id))		
+		if time.time() - self.time_last_heartbeat > self.args.job_timeout/3:
+			spec = HeartbeatSpec(self.args.run, worker.id, time.time())
+			self.queue_result.send(spec)
+			logger.debug("{}.send_heartbeat()".format(worker.id))
+			self.time_last_heartbeat = time.time()	
 
 
 	def _handle_message(self, run_spec, ack, nack):
