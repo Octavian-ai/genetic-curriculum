@@ -51,8 +51,8 @@ if __name__ == "__main__":
 
 	args = get_args()
 
-	started_drone = False
-	started_sup = False
+	my_drone = None
+	my_sup = None
 
 	while True:
 		am_sup = i_am_leader(args)
@@ -60,17 +60,17 @@ if __name__ == "__main__":
 
 		logger.debug("Main dispatch loop am_sup:{} am_drone:{}".format(am_sup, am_drone))
 
-		if am_sup and not started_sup:
+		if am_sup and (my_sup is None or not my_sup.isAlive()):
 			t = threading.Thread(target=do_supervisor, args=(args,))
 			t.setDaemon(True)
 			t.start()
-			started_sup = True
+			my_sup = t
 			
-		if am_drone and not started_drone:
+		if am_drone and (my_drone is None or not my_drone.isAlive()):
 			t = threading.Thread(target=do_drone, args=(args,))
 			t.setDaemon(True)
 			t.start()
-			started_drone = True
+			my_drone = t
 
 		time.sleep(args.sleep_per_cycle)
 			
