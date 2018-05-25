@@ -245,6 +245,7 @@ class Supervisor(object):
 
 			if isinstance(spec, HeartbeatSpec):
 				i.time_last_updated = time.time()
+				logger.info("{}.record_heartbeat()".format(spec.id))
 
 			elif isinstance(spec, ResultSpec):
 				if spec.total_steps >= i.total_steps:

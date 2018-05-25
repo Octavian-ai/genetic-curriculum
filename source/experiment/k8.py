@@ -2,6 +2,7 @@
 import logging, coloredlogs
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='INFO',logger=logger)
+coloredlogs.install(level='DEBUG',logger=logging.getLogger('pbt'))
 
 import requests
 import json
@@ -53,6 +54,7 @@ if __name__ == "__main__":
 				logger.info("Start drone")
 				drone = get_drone(args)	
 			elif not am_drone and drone is not None:
+				logger.info("Stop drone")
 				drone.close()
 				drone = None
 

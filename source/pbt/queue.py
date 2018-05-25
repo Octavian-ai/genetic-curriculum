@@ -133,16 +133,23 @@ class RabbitQueue(Queue):
 			self.logger.debug("Received")
 			self._handle_message(body, callback, ack, nack)
 
+		messages = []
+
 		with RabbitQuickChannel(self.args, self.queue, self.exchange, self.topic) as channel:
-			method, properties, body = channel.basic_get(queue=self.queue, no_ack=True)
+			while True:
+				method, properties, body = channel.basic_get(queue=self.queue, no_ack=True)
+				if body is not None:
+					messages.append(body)
+				else: 
+					break
 				
 			# if method is not None:
 			# 	channel.basic_ack(delivery_tag = method.delivery_tag)
 
-		self.logger.debug("Received {} {} {} on {}".format(method, properties, body, self.queue))
+		self.logger.debug("Received {} messages".format(len(messages)))
 
-		if body is not None:
-			self._handle_message(body, callback, lambda:True, lambda:True)
+		for i in messages:
+			self._handle_message(i, callback, lambda:True, lambda:True)
 
 			# _callback(channel, method, properties, body)
 		
