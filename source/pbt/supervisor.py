@@ -130,7 +130,7 @@ class Supervisor(object):
 			for key, plot in self.plot_measures.items():
 				val = self.measures[key](worker)
 				if val is not None:
-					plot.add_result(time.time(), val, str(idx))
+					plot.add_result(time.time(), val, str(worker.id))
 
 		for key, fn in self.measures.items():
 			vs = [fn(i) for i in self.workers.values() if fn(i) is not None]
