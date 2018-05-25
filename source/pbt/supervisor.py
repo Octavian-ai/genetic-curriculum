@@ -217,18 +217,29 @@ class Supervisor(object):
 	def consider_exploit(self, worker):
 		if worker.recent_steps >= self.args.micro_step * self.args.macro_step:
 
-			stack = self.get_sorted_workers()
-			idx = stack.index(worker)
-
-			if len(stack) > 1 and idx < max(len(stack) * self.args.exploit_pct,1):
-				del self.workers[worker.id]
-				logger.info("del {}".format(worker.id))
-				self.add_worker()
-			else:
-				self.dispatch(worker)
-			
-
 			worker.recent_steps = 0
+			stack = self.get_sorted_workers()
+
+			try:
+				idx = stack.index(worker)
+
+				# if we have enough results
+				if len(stack) > 1 and len(stack) > len(self.workers)/2: 
+					nLower = max(len(stack) * self.args.exploit_pct,1)
+
+					# proportionally cull the bottom tranche
+					if idx < nLower:
+						del self.workers[worker.id]
+						logger.info("del {}".format(worker.id))
+
+						self.add_worker() # dispatches the worker
+						return
+
+			except ValueError:
+				# It's ok we couldn't index that worker, it means they've no score yet
+				pass
+
+			self.dispatch(worker)
 
 
 	def dispatch(self, worker):
