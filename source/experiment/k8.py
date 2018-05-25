@@ -9,6 +9,7 @@ import json
 import platform
 import time
 import pika
+import threading
 
 from .helpers import *
 
@@ -30,10 +31,52 @@ def i_am_leader(args):
  		res.raise_for_status()
 
 
+
+def do_drone(args):
+ 	drone = get_drone(args)
+
+ 	while True:
+ 		drone.run_epoch()
+ 		time.sleep(args.sleep_per_cycle)
+
+def do_supervisor(args):
+	sup = get_supervisor(args)
+
+	while True:
+		sup.run_epoch()
+		time.sleep(args.sleep_per_cycle)
+
+
 if __name__ == "__main__":
 
 	args = get_args()
 
+	started_drone = False
+	started_sup = False
+
+	while True:
+		am_sup = i_am_leader(args)
+		am_drone = not am_sup or args.master_works
+
+		logger.debug("Main dispatch loop am_sup:{} am_drone:{}".format(am_sup, am_drone))
+
+		if am_sup and not started_sup:
+			t = threading.Thread(target=do_supervisor, args=(args,))
+			t.setDaemon(True)
+			t.start()
+			started_sup = True
+			
+		if am_drone and not started_drone:
+			t = threading.Thread(target=do_drone, args=(args,))
+			t.setDaemon(True)
+			t.start()
+			started_drone = True
+
+		time.sleep(args.sleep_per_cycle)
+			
+
+
+def old_main_loop():
 	manager = None
 	drone = None
 
