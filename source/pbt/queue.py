@@ -119,7 +119,7 @@ class RabbitQueue(Queue):
 				))
 			self.logger.debug("Sent")
 
-	def get_messages(self, callback):
+	def get_messages(self, callback, limit=None):
 		
 		def _callback(ch, method, properties, body):
 			def ack():
@@ -136,10 +136,12 @@ class RabbitQueue(Queue):
 		messages = []
 
 		with RabbitQuickChannel(self.args, self.queue, self.exchange, self.topic) as channel:
-			while True:
+			i = 0
+			while limit is None or i < limit:
 				method, properties, body = channel.basic_get(queue=self.queue, no_ack=True)
 				if body is not None:
 					messages.append(body)
+					i += 1
 				else: 
 					break
 				

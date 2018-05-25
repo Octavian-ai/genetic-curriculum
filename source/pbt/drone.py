@@ -96,7 +96,7 @@ class Drone(object):
 
 
 	def get_messages(self):
-		self.queue_run.get_messages(lambda data, ack, nack: self._handle_message(data, ack, nack))
+		self.queue_run.get_messages(lambda data, ack, nack: self._handle_message(data, ack, nack), 1)
 		
 
 	def run_epoch(self):
