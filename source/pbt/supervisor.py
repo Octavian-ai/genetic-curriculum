@@ -33,6 +33,8 @@ class Supervisor(object):
 		self.print_dirty = False
 
 		self.plot_progress = Ploty(args, title='Training progress', x='Time', y="Value")
+		self.plot_best_score = Ploty(args, title='Best score', x='Time', y="Value")
+
 		self.plot_measures = {}
 		self.measures = {
 			"score": self.score
@@ -63,7 +65,7 @@ class Supervisor(object):
 		self.time_last_save = time.time()
 
 		self.plot_progress.load()
-
+		self.plot_best_score.load()
 
 
 	def save(self):
@@ -153,7 +155,10 @@ class Supervisor(object):
 			best_worker = stack[-1]
 			plot_param_metrics(self.plot_progress, best_worker, suffix="_best")
 
+			self.plot_best_score.add_result(time.time(), self.score(best_worker), "score")
+
 		self.plot_progress.write()
+		self.plot_best_score.write()
 
 		self.print_dirty = False
 
