@@ -41,8 +41,8 @@ class Supervisor(object):
 		}
 		self.ensure_has_measure("score")
 
-		self.queue_result = QueueFactory.vend(self.args, "pbt_result")
-		self.queue_run = QueueFactory.vend(self.args, "pbt_run")
+		self.queue_result = QueueFactory.vend(self.args, "result", "result_supervisor", "*")
+		self.queue_run = QueueFactory.vend(self.args, "run", "run_shared", "run")
 		
 		if self.args.load:
 			self.load()
@@ -263,12 +263,12 @@ class Supervisor(object):
 
 
 	def _handle_result(self, spec, ack, nack):		
-		if spec.id in self.workers:
-			i = self.workers[spec.id]
+		if spec.worker_id in self.workers:
+			i = self.workers[spec.worker_id]
 
 			if isinstance(spec, HeartbeatSpec):
 				i.time_last_updated = time.time()
-				logger.debug("{}.record_heartbeat()".format(spec.id))
+				logger.debug("{}.record_heartbeat()".format(spec.worker_id))
 
 			elif isinstance(spec, ResultSpec):
 				if spec.total_steps > i.total_steps:
@@ -277,19 +277,19 @@ class Supervisor(object):
 					if spec.success:
 						i.update_from_result_spec(spec)
 						self.print_worker_results(i)
-						logger.info("{}.record_result({})".format(spec.id, spec))
+						logger.info("{}.record_result({})".format(spec.worker_id, spec))
 						self.consider_exploit(i)
 					else:
-						logger.info("del {}".format(spec.id))
-						del self.workers[spec.id]
+						logger.info("del {}".format(spec.worker_id))
+						del self.workers[spec.worker_id]
 						self.add_worker()
 				else:
-					logger.warning("{} received results for < current total_steps".format(spec.id))
+					logger.warning("{} received results for < current total_steps".format(spec.worker_id))
 
 			else:
 				logger.warning("Received unknown message type {}".format(type(spec)))
 		else:
-			logger.debug("{} worker not found for message {}".format(spec.id, spec))
+			logger.debug("{} worker not found for message {}".format(spec.worker_id, spec))
 
 		# Swallow bad messages
 		# The design is for the supervisor to re-send and to re-spawn drones

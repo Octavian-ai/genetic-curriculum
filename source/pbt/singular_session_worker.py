@@ -101,11 +101,13 @@ class SingularSessionWorker(Worker):
 
 
 		
-	def do_step(self, steps, heartbeat):
+	def do_step(self, steps, heartbeat, should_continue):
 		sm = self.get_model_session("train")
 		for i in range(steps):
 			_, loss = sm.run([sm.model.train_op, sm.model.loss])
 			heartbeat()
+			if not should_continue():
+				break
 		sm.close()
 			
 

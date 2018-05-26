@@ -47,10 +47,11 @@ class Worker(object):
 	# Implement these
 	# --------------------------------------------------------------------------
 
-	def do_step(self, steps, heartbeat):
+	def do_step(self, steps, heartbeat, should_continue):
 		"""Execute a training step. Returns nothing.
 
 			:param heartbeat Call this function each training iteration, so the supervisor knows you're alive
+			:param should_continue Call this function each training iteration and continue if it returns true
 		"""
 		pass
 
@@ -109,13 +110,13 @@ class Worker(object):
 	# Step and eval
 	# --------------------------------------------------------------------------
 		
-	def step(self, steps, heartbeat):
+	def step(self, steps, heartbeat, should_continue):
 		self.recent_steps += steps
 		self.total_steps += steps
 
 		started = time.time()
 		
-		self.do_step(steps, heartbeat)
+		self.do_step(steps, heartbeat, should_continue)
 
 		time_taken = time.time() - started
 		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))
@@ -126,9 +127,9 @@ class Worker(object):
 		return self.results
 
 
-	def step_and_eval(self, steps, heartbeat):
+	def step_and_eval(self, steps, heartbeat, should_continue):
 		logger.info("{}.train({})".format(self.id, steps))
-		self.step(steps, heartbeat)
+		self.step(steps, heartbeat, should_continue)
 		logger.info("{}.eval()".format(self.id))
 		return self.eval()
 

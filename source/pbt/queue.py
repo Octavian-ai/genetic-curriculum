@@ -60,7 +60,9 @@ class QueueFactory(object):
 
 class RabbitQuickChannel(object):
 
-	def __init__(self, args, queue, exchange, topic):
+	default_expiry = 1000 * 60 * 60 * 5
+
+	def __init__(self, args, exchange, queue, topic):
 		self.args = args
 		self.topic = topic
 		self.queue = queue
@@ -75,11 +77,16 @@ class RabbitQuickChannel(object):
 		channel = self.connection.channel()
 		channel.basic_qos(prefetch_count=1)
 
-		channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+		channel.exchange_declare(exchange=self.exchange, exchange_type='topic', arguments={
+			'x-expires': RabbitQuickChannel.default_expiry
+		})
 		channel.queue_declare(
 			queue=self.queue, 
 			durable=True,
-			arguments={'x-message-ttl' : 1000*self.args.message_timeout})
+			arguments={
+				'x-message-ttl' : 1000*self.args.message_timeout,
+				'x-expires': RabbitQuickChannel.default_expiry
+			})
 		channel.queue_bind(queue=self.queue, exchange=self.exchange, routing_key=self.topic)
 
 		return channel
@@ -96,28 +103,28 @@ class RabbitQueue(Queue):
 
 	connection = None
 
-	def __init__(self, args, queue):
+	def __init__(self, args, exchange, queue, topic):
 		super().__init__(args)
 
-		self.topic = args.run
-		self.queue = queue + "_" + self.topic
-		self.exchange = queue + "_exchange"
+		self.topic    = args.run + "." + topic
+		self.queue    = args.run + "." + queue
+		self.exchange = args.run + "." + exchange
 
-		self.logger = logging.getLogger(__name__ + "." + queue + "." + self.topic)
+		self.logger = logging.getLogger(__name__ + "." + exchange + "." + queue + "." + topic)
 
 
 	def send(self, message):
-		message = pickle.dumps(message)
+		body = pickle.dumps(message)
 
-		with RabbitQuickChannel(self.args, self.queue, self.exchange, self.topic) as channel:
+		with RabbitQuickChannel(self.args, self.exchange, self.queue, self.topic) as channel:
 			channel.basic_publish(
 				exchange=self.exchange,
 				routing_key=self.topic,
-				body=message,
+				body=body,
 				properties=pika.BasicProperties(
 					delivery_mode = 2, # make message persistent
 				))
-			self.logger.debug("Sent")
+			self.logger.debug("Sent {}".format(message))
 
 	def get_messages(self, callback, limit=None):
 		
@@ -131,11 +138,12 @@ class RabbitQueue(Queue):
 				self.logger.debug("NACK {}".format(body))
 			
 			self.logger.debug("Received")
+
 			self._handle_message(body, callback, ack, nack)
 
 		messages = []
 
-		with RabbitQuickChannel(self.args, self.queue, self.exchange, self.topic) as channel:
+		with RabbitQuickChannel(self.args, self.exchange, self.queue, self.topic) as channel:
 			i = 0
 			while limit is None or i < limit:
 				method, properties, body = channel.basic_get(queue=self.queue, no_ack=True)
@@ -145,34 +153,13 @@ class RabbitQueue(Queue):
 				else: 
 					break
 				
-			# if method is not None:
-			# 	channel.basic_ack(delivery_tag = method.delivery_tag)
-
 		self.logger.debug("Received {} messages".format(len(messages)))
 
 		for i in messages:
 			self._handle_message(i, callback, lambda:True, lambda:True)
 
-			# _callback(channel, method, properties, body)
-		
-		# for i in gen:
-		# 	logger.info("Consume loop for "+self.queue)
-		# 	if i is  None:
-		# 		break
-		# 		# continue
-		# 	else:
-		
-		# channel.cancel()
-		# channel.close()
-
-		# logger.info("Subscribed to {} {}".format(self.queue, self.args.run))
-
 	def close(self):
-		# self.channel.cancel()
-		# self.channel.close()
 
-		# if RabbitQueue.connection is not None:
-			# RabbitQueue.connection.close()
 		pass
 
 

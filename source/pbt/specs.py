@@ -1,13 +1,13 @@
 
-
 import uuid
 import time
 import collections
 import platform
 
 RunSpec = collections.namedtuple('RunSpec', [
+	'id',
 	'group', 
-	'id', 
+	'worker_id', 
 	'from_hostname',
 	'params',
 	'recent_steps',
@@ -19,7 +19,7 @@ RunSpec = collections.namedtuple('RunSpec', [
 
 ResultSpec = collections.namedtuple('ResultSpec', [
 	'group', 
-	'id', 
+	'worker_id', 
 	'from_hostname',
 	'results', 
 	'success', 
@@ -28,7 +28,12 @@ ResultSpec = collections.namedtuple('ResultSpec', [
 	'total_steps',
 	'time_sent'])
 
-HeartbeatSpec = collections.namedtuple('HeartbeatSpec', ['group', 'id', 'time_sent'])
+HeartbeatSpec = collections.namedtuple('HeartbeatSpec', [
+	'group', 
+	'run_id',
+	'worker_id', 
+	'run_token',
+	'time_sent'])
 
 
 
@@ -52,6 +57,7 @@ class WorkerHeader(object):
 
 	def gen_run_spec(self, args):
 		return RunSpec(
+			uuid.uuid1(),
 			args.run, 
 			self.id, 
 			platform.node(),
@@ -60,6 +66,7 @@ class WorkerHeader(object):
 			self.total_steps,
 			args.micro_step, 
 			args.macro_step,
-			time.time())
+			time.time()
+		)
 
 
