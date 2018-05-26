@@ -253,6 +253,7 @@ class Supervisor(object):
 		self.queue_run.send(run_spec)
 		logger.info('{}.dispatch({},{})'.format(worker.id, run_spec.macro_step, run_spec.micro_step))
 		worker.time_last_updated = time.time()
+		worker.time_last_dispatched = time.time()
 
 	def dispatch_idle(self):
 		for i in self.workers.values():
@@ -270,7 +271,7 @@ class Supervisor(object):
 				logger.debug("{}.record_heartbeat()".format(spec.id))
 
 			elif isinstance(spec, ResultSpec):
-				if spec.total_steps >= i.total_steps:
+				if spec.total_steps > i.total_steps:
 					self.print_dirty = True
 
 					if spec.success:

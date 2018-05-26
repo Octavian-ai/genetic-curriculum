@@ -45,6 +45,7 @@ class WorkerHeader(object):
 		self.recent_steps = result_spec.recent_steps
 		self.results = result_spec.results
 		self.time_last_updated = time.time()
+		self.time_last_dispatched = 0
 
 	def gen_run_spec(self, args):
 		return RunSpec(
