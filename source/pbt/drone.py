@@ -4,6 +4,7 @@ import traceback
 import pickle
 import time
 import collections
+import platform
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class Drone(object):
 		result_spec = ResultSpec(
 			self.args.run, 
 			run_spec.id, 
+			platform.node(),
 			worker.results, 
 			success, 
 			run_spec.micro_step,

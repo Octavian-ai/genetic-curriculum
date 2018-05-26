@@ -3,10 +3,12 @@
 import uuid
 import time
 import collections
+import platform
 
 RunSpec = collections.namedtuple('RunSpec', [
 	'group', 
 	'id', 
+	'from_hostname',
 	'params',
 	'recent_steps',
 	'total_steps',
@@ -18,6 +20,7 @@ RunSpec = collections.namedtuple('RunSpec', [
 ResultSpec = collections.namedtuple('ResultSpec', [
 	'group', 
 	'id', 
+	'from_hostname',
 	'results', 
 	'success', 
 	'steps', 
@@ -51,6 +54,7 @@ class WorkerHeader(object):
 		return RunSpec(
 			args.run, 
 			self.id, 
+			platform.node(),
 			self.params, 
 			self.recent_steps,
 			self.total_steps,

@@ -101,9 +101,9 @@ def do_supervisor(args):
 if __name__ == "__main__":
 
 	args = get_args()
-
-	my_drone = None
 	my_sup = None
+
+	my_drones = { k:None for k in range(args.n_drones) }
 
 	try:
 		while True:
@@ -112,12 +112,14 @@ if __name__ == "__main__":
 				my_sup = threading.Thread(target=do_supervisor, args=(args,))
 				my_sup.setDaemon(True)
 				my_sup.start()
-				
-			if my_drone is None or not my_drone.isAlive():
-				logger.debug("Dispatch drone thread")
-				my_drone = threading.Thread(target=do_drone, args=(args,))
-				my_drone.setDaemon(True)
-				my_drone.start()
+
+			for key, drone in my_drones.items():
+				if drone is None or not drone.isAlive():
+					logger.debug("Dispatch drone thread")
+					t = threading.Thread(target=do_drone, args=(args,))
+					t.setDaemon(True)
+					t.start()
+					my_drones[key] = t
 
 			time.sleep(args.sleep_per_cycle)
 
