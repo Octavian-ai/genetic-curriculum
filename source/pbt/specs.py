@@ -30,6 +30,7 @@ ResultSpec = collections.namedtuple('ResultSpec', [
 
 HeartbeatSpec = collections.namedtuple('HeartbeatSpec', [
 	'group', 
+	'from_hostname',
 	'run_id',
 	'worker_id', 
 	'run_token',

@@ -55,6 +55,7 @@ class Drone(object):
 		if time.time() - self.time_last_heartbeat > self.args.job_timeout/3:
 			spec = HeartbeatSpec(
 				self.args.run, 
+				platform.node(),
 				run_spec.id,
 				worker.id, 
 				run_token, 

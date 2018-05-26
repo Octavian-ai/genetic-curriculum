@@ -268,7 +268,7 @@ class Supervisor(object):
 
 			if isinstance(spec, HeartbeatSpec):
 				i.time_last_updated = time.time()
-				logger.debug("{}.record_heartbeat()".format(spec.worker_id))
+				logger.debug("{}.record_heartbeat({}, {})".format(spec.worker_id, spec.from_hostname, spec.run_id))
 
 			elif isinstance(spec, ResultSpec):
 				if spec.total_steps > i.total_steps:
@@ -284,7 +284,7 @@ class Supervisor(object):
 						del self.workers[spec.worker_id]
 						self.add_worker()
 				else:
-					logger.warning("{} received results for < current total_steps".format(spec.worker_id))
+					logger.warning("{} received results for {} < current total_steps {}".format(spec.worker_id, spec.total_steps, i.total_steps))
 
 			else:
 				logger.warning("Received unknown message type {}".format(type(spec)))
