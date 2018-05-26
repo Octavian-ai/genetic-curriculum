@@ -13,7 +13,7 @@ import threading
 
 from .helpers import *
 
-def i_am_leader(args):
+def i_am_supervisor(args):
 
 	try:
 		res = requests.get("http://localhost:4040")
@@ -28,23 +28,74 @@ def i_am_leader(args):
 		return leader_name == my_name
 
 	else:
- 		res.raise_for_status()
+		res.raise_for_status()
 
+
+def i_am_drone(args):
+	am_sup = i_am_supervisor(args)
+	am_drone = not am_sup or args.master_works
+	return am_drone
+
+# --------------------------------------------------------------------------
+# Thread work loops
+# --------------------------------------------------------------------------
 
 
 def do_drone(args):
- 	drone = get_drone(args)
+	drone = None
 
- 	while True:
- 		drone.run_epoch()
- 		time.sleep(args.sleep_per_cycle)
+	try:
+		while True:
+			am_drone = i_am_drone(args)
+
+			if am_drone and drone is None:
+				logger.info("Start drone")
+				drone = get_drone(args)	
+
+			elif not am_drone and drone is not None:
+				logger.info("Stop drone")
+				drone.close()
+				drone = None
+
+			if drone is not None:
+				drone.run_epoch()
+
+			time.sleep(args.sleep_per_cycle)
+
+	# TODO: actual signalling
+	except KeyboardInterrupt:
+		if drone is not None:
+			drone.close()
 
 def do_supervisor(args):
-	sup = get_supervisor(args)
+	sup = None
 
-	while True:
-		sup.run_epoch()
-		time.sleep(args.sleep_per_cycle)
+	try:
+		while True:
+			am_sup = i_am_supervisor(args)
+
+			if am_sup and sup is None:
+				logger.info("Start supervisor")
+				sup = get_supervisor(args)
+			elif not am_sup and sup is not None:
+				logger.info("Stop supervisor")
+				sup.close()
+				sup = None
+
+			if sup is not None:
+				sup.run_epoch()
+
+			time.sleep(args.sleep_per_cycle)
+
+	# TODO: actual signalling
+	except KeyboardInterrupt:
+		if sup is not None:
+			sup.close()
+
+
+# --------------------------------------------------------------------------
+# Dispatch threads from main loop
+# --------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
@@ -54,68 +105,25 @@ if __name__ == "__main__":
 	my_drone = None
 	my_sup = None
 
-	while True:
-		am_sup = i_am_leader(args)
-		am_drone = not am_sup or args.master_works
-
-		logger.debug("Main dispatch loop am_sup:{} am_drone:{}".format(am_sup, am_drone))
-
-		if am_sup and (my_sup is None or not my_sup.isAlive()):
-			t = threading.Thread(target=do_supervisor, args=(args,))
-			t.setDaemon(True)
-			t.start()
-			my_sup = t
-			
-		if am_drone and (my_drone is None or not my_drone.isAlive()):
-			t = threading.Thread(target=do_drone, args=(args,))
-			t.setDaemon(True)
-			t.start()
-			my_drone = t
-
-		time.sleep(args.sleep_per_cycle)
-			
-
-
-def old_main_loop():
-	manager = None
-	drone = None
-
 	try:
 		while True:
-			am_leader = i_am_leader(args)
-			am_drone = not am_leader or args.master_works
-
-			if am_leader and manager is None:
-					logger.info("Start supervisor")
-					manager = get_supervisor(args)
-			elif not am_leader and manager is not None:
-					logger.info("Stop supervisor")
-					manager.close()
-					manager = None
-
-			if am_drone and drone is None:
-				logger.info("Start drone")
-				drone = get_drone(args)	
-			elif not am_drone and drone is not None:
-				logger.info("Stop drone")
-				drone.close()
-				drone = None
-
-			if drone is not None:
-				drone.run_epoch()
-
-			if manager is not None:
-				manager.run_epoch()
+			if my_sup is None or not my_sup.isAlive():
+				logger.debug("Dispatch supervisor thread")
+				my_sup = threading.Thread(target=do_supervisor, args=(args,))
+				my_sup.setDaemon(True)
+				my_sup.start()
+				
+			if my_drone is None or not my_drone.isAlive():
+				logger.debug("Dispatch drone thread")
+				my_drone = threading.Thread(target=do_drone, args=(args,))
+				my_drone.setDaemon(True)
+				my_drone.start()
 
 			time.sleep(args.sleep_per_cycle)
 
-
-
 	except KeyboardInterrupt:
-		if manager is not None:
-			manager.close()
+		# do something to signal to threads
+		pass
 
-		if drone is not None:
-			drone.close()
 
 
