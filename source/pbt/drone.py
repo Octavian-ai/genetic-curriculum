@@ -24,7 +24,7 @@ class Drone(object):
 		self.SubjectClass = SubjectClass
 		self.init_params = init_params
 		self.worker_cache = {}
-		self.run_max_token = {}
+		self.run_max = {}
 
 		self.performance = []
 		self.steps_per_sec = 0
@@ -49,7 +49,6 @@ class Drone(object):
 			time.time())
 
 		self.queue_result.send(result_spec)
-		logger.info("{}.send_result({})".format(worker.id, result_spec))
 
 	def _send_heartbeat(self, worker, run_spec, run_token):
 		if time.time() - self.time_last_heartbeat > self.args.job_timeout/3:
@@ -59,6 +58,7 @@ class Drone(object):
 				run_spec.id,
 				worker.id, 
 				run_token, 
+				worker.total_steps,
 				time.time())
 
 			self.queue_heartbeat.send(spec)
@@ -67,17 +67,22 @@ class Drone(object):
 
 	def _handle_heartbeat(self, spec):
 		if time.time() - self.time_last_token_check > self.args.job_timeout/3:
-			cur = self.run_max_token.get(spec.run_id, 0)
-			self.run_max_token[spec.run_id] = max(cur, spec.run_token)
+			cur = self.run_max.get(spec.worker_id, 0)
+			self.run_max[spec.worker_id] = max(cur, spec.total_steps + spec.run_token)
 			self.time_last_token_check = time.time()
 
 	def _should_continue(self, worker, run_spec, run_token):
 		self.queue_heartbeat.get_messages(lambda m, ack, nack: self._handle_heartbeat(m))
 
 		try:
-			should = self.run_max_token[run_spec.id] <= run_token
+			should = self.run_max[run_spec.worker_id] <= run_token + worker.total_steps
 			if not should:
-				logger.debug("Should not continue, heard another heartbeat with higher run token ")
+				self.queue_result.send(GiveUpSpec(
+					self.args.run,
+					platform.node(),
+					run_spec.id
+				))
+				logger.debug("Should not continue, heard another heartbeat with higher run")
 			return should
 		except Exception:
 			return True

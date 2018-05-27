@@ -137,7 +137,7 @@ class RabbitQueue(Queue):
 				ch.basic_nack(delivery_tag = method.delivery_tag)
 				self.logger.debug("NACK {}".format(body))
 			
-			self.logger.debug("Received")
+			# self.logger.debug("Received")
 
 			self._handle_message(body, callback, ack, nack)
 
@@ -153,7 +153,7 @@ class RabbitQueue(Queue):
 				else: 
 					break
 				
-		self.logger.debug("Received {} messages".format(len(messages)))
+		# self.logger.debug("Received {} messages".format(len(messages)))
 
 		for i in messages:
 			self._handle_message(i, callback, lambda:True, lambda:True)

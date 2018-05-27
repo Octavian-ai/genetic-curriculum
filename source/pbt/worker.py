@@ -111,12 +111,12 @@ class Worker(object):
 	# --------------------------------------------------------------------------
 		
 	def step(self, steps, heartbeat, should_continue):
-		self.recent_steps += steps
-		self.total_steps += steps
-
 		started = time.time()
 		
 		self.do_step(steps, heartbeat, should_continue)
+
+		self.recent_steps += steps
+		self.total_steps += steps
 
 		time_taken = time.time() - started
 		tf.logging.info("train_op/second: {}".format(float(steps)/float(time_taken)))

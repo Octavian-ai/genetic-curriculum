@@ -34,7 +34,14 @@ HeartbeatSpec = collections.namedtuple('HeartbeatSpec', [
 	'run_id',
 	'worker_id', 
 	'run_token',
+	'total_steps',
 	'time_sent'])
+
+GiveUpSpec = collections.namedtuple('GiveUpSpec', [
+	'group',
+	'from_hostname',
+	'run_id'
+])
 
 
 
