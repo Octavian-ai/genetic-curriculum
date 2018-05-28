@@ -24,8 +24,8 @@ class DatasetParam(GeneticParam):
 
 		if self.v is None:
 			self.v = {
-				"length": RandIntRangeParamOf(1, os.getenv("MAX_LENGTH", 2))(),
-				"repeats": RandIntRangeParamOf(1, os.getenv("MAX_REPEATS", 5))(),
+				"length": RandIntRangeParamOf(1, int(os.getenv("MAX_LENGTH", 2)))(),
+				"repeats": RandIntRangeParamOf(1, int(os.getenv("MAX_REPEATS", 5)))(),
 			}
 
 

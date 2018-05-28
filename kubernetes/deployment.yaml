@@ -2,18 +2,18 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   annotations:
-    deployment.kubernetes.io/revision: "10"
+    deployment.kubernetes.io/revision: "1"
   creationTimestamp: 2018-05-20T19:16:08Z
-  generation: 35
+  generation: 1
   labels:
     app: pbt
-  name: pbt
+  name: pbt-big
   namespace: default
-  resourceVersion: "776772"
-  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt
+  resourceVersion: "1720336"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt-big
   uid: 4039acbe-5c62-11e8-ba28-42010a8000b8
 spec:
-  replicas: 3
+  replicas: 20
   selector:
     matchLabels:
       app: pbt
@@ -31,14 +31,15 @@ spec:
       containers:
       - env:
         - name: N_WORKERS
-          value: "10"
+          value: "20"
         - name: RUN
-          value: cloud-v0
+          value: cloud-v14
         - name: AMQP_URL
-          valueFrom:
-            secretKeyRef:
-              name: pbt_keys
-              key: amqp_url
+          value: amqp://fndicfmj:qCj7dwrZrGuOlLYPMDsNW08OLEype9_Q@black-boar.rmq.cloudamqp.com/fndicfmj?heartbeat=0
+        - name: MAX_LENGTH
+          value: "5"
+        - name: MAX_REPEATS
+          value: "20"
         image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum
         imagePullPolicy: Always
         name: github-octavian-ai-genetic-curriculum
