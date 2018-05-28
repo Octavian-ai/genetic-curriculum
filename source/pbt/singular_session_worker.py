@@ -9,6 +9,12 @@ import time
 from .worker import Worker
 from .param import *
 from .params import *
+from util import path_exists
+
+import logging
+logger = logging.getLogger(__name__)
+
+tf.logging.set_verbosity("INFO")
 
 class ModelSession(object):
 	def __init__(self, init_params, friendly_params, model_dir, warm_start_dir, mode):
@@ -59,12 +65,17 @@ class ModelSession(object):
 					)
 				)
 
-			if os.path.exists(self.model_dir):
+			# logger.debug("model_dir: {}  warm_start_dir: {}".format(self.model_dir, self.warm_start_dir))
+
+			# Transparent across GCS and local paths
+			if path_exists(self.init_params["bucket"], os.path.join(self.model_dir, "checkpoint")):
 				# We should resume from that location
 				load_dir = self.model_dir
 			else:
 				# We should try to warm start
 				load_dir = self.warm_start_dir
+
+			# logger.debug("checkpoint_dir {}".format(load_dir))
 
 			self.sess = tf.train.SingularMonitoredSession(
 				hooks=hooks, checkpoint_dir=load_dir

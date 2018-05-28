@@ -3,6 +3,8 @@ import logging, coloredlogs
 logger = logging.getLogger(__name__)
 coloredlogs.install(level='DEBUG',logger=logger)
 coloredlogs.install(level='DEBUG',logger=logging.getLogger('pbt'))
+coloredlogs.install(level='DEBUG',logger=logging.getLogger('experiment'))
+
 
 import requests
 import json

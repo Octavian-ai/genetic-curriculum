@@ -258,7 +258,7 @@ class Supervisor(object):
 	def dispatch_idle(self):
 		for i in self.workers.values():
 			if time.time() - i.time_last_updated > self.args.job_timeout:
-				logger.info('{}.dispatch_idle()'.format(i.id))
+				logger.warning('{}.dispatch_idle()'.format(i.id))
 				self.dispatch(i)
 
 
@@ -268,24 +268,26 @@ class Supervisor(object):
 
 			if isinstance(spec, HeartbeatSpec):
 				i.time_last_updated = time.time()
-				logger.debug("{}.record_heartbeat({}, {}, {})".format(spec.worker_id, spec.from_hostname, spec.total_steps, spec.run_id, spec.tiebreaker))
+				# logger.debug("{}.record_heartbeat({}, {}, {})".format(spec.worker_id, spec.from_hostname, spec.total_steps, spec.run_id, spec.tiebreaker))
 
 			elif isinstance(spec, ResultSpec):
-				if spec.total_steps > i.total_steps:
-					self.print_dirty = True
-
-					if spec.success:
+				if spec.success:
+					if spec.total_steps > i.total_steps:
 						i.update_from_result_spec(spec)
-						self.print_worker_results(i)
 						logger.info("{}.record_result({})".format(spec.worker_id, spec))
+
+						self.print_dirty = True
+						self.print_worker_results(i)
+						
 						self.consider_exploit(i)
 					else:
-						logger.info("del {}".format(spec.worker_id))
-						del self.workers[spec.worker_id]
-						self.add_worker()
-				else:
-					logger.warning("{} received results for {} < current total_steps {}".format(spec.worker_id, spec.total_steps, i.total_steps))
+						logger.warning("{} received results for {} < current total_steps {}".format(spec.worker_id, spec.total_steps, i.total_steps))
 
+				else:
+					logger.info("del {}".format(spec.worker_id))
+					del self.workers[spec.worker_id]
+					self.add_worker()
+			
 			elif isinstance(spec, GiveUpSpec):
 				pass
 

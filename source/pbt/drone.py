@@ -51,6 +51,7 @@ class Drone(object):
 			run_spec.micro_step,
 			worker.recent_steps,
 			worker.total_steps, 
+			worker.params,
 			time.time())
 
 		self.queue_result.send(result_spec)
@@ -108,6 +109,10 @@ class Drone(object):
 			self.worker_cache[run_spec.worker_id] = worker
 
 		worker.update_from_run_spec(run_spec)
+
+		# Good idea, bad impl
+		# Stop multiple workers over-writing eachother's saves
+		# worker.params["model_id"] = worker.params["model_id"].mutate(0)
 		
 		try:
 			time_start = time.time()

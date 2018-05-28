@@ -36,6 +36,7 @@ ResultSpec = collections.namedtuple('ResultSpec', [
 	'steps', 
 	'recent_steps',
 	'total_steps',
+	'params',
 	'time_sent'])
 
 HeartbeatSpec = collections.namedtuple('HeartbeatSpec', [
@@ -74,6 +75,10 @@ class WorkerHeader(object):
 		self.results = result_spec.results
 		self.time_last_updated = time.time()
 		self.time_last_dispatched = 0
+
+		# TODO: impl properly
+		# Protecting the params, it should in theory be fine to copy all of them over
+		# self.params["model_id"] = result_spec.params["model_id"]
 
 	def gen_run_spec(self, args):
 		return RunSpec(

@@ -31,6 +31,18 @@ class FileThingy(object):
   def gcs_path(self):
     return os.path.join(self.args.gcs_dir, self.args.run, self.filename)
   
+
+# TODO: See if TF GFile can replace this
+def path_exists(bucket_name, path):
+  """ :param bucket The bucket from args """
+
+  if len(path) > 5 and path[0:5] == "gs://" and bucket_name is not None:
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    gs_sub_path = path.replace("gs://"+bucket_name+"/", "")
+    return bucket.blob(gs_sub_path).exists()
+  else:
+    return os.path.exists(path)
   
 
 class FileReadie(FileThingy):
@@ -45,11 +57,11 @@ class FileReadie(FileThingy):
     if 'google.cloud' in sys.modules and self.args.bucket is not None and self.args.gcs_dir is not None:
       client = storage.Client()
       bucket = client.get_bucket(self.args.bucket)
-      blob2 = bucket.blob(self.gcs_path)
+      blob = bucket.blob(self.gcs_path)
       os.makedirs(self.file_dir, exist_ok=True)
       with open(self.file_path, "wb" if self.binary else "w") as dest_file:
         try:
-          blob2.download_to_file(dest_file)
+          blob.download_to_file(dest_file)
         except google.cloud.exceptions.NotFound:
           raise FileNotFoundError()
 
@@ -76,8 +88,8 @@ class FileWritey(FileThingy):
     if 'google.cloud' in sys.modules and self.args.bucket is not None and self.args.gcs_dir is not None:
       client = storage.Client()
       bucket = client.get_bucket(self.args.bucket)
-      blob2 = bucket.blob(self.gcs_path)
-      blob2.upload_from_filename(filename=self.file_path)
+      blob = bucket.blob(self.gcs_path)
+      blob.upload_from_filename(filename=self.file_path)
 
   def __enter__(self):
     os.makedirs(self.file_dir, exist_ok=True)
