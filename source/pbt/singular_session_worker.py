@@ -82,6 +82,12 @@ class ModelSession(object):
 		self.graph = None
 		self.model = None
 
+	def __enter__(self):
+		return self
+
+	def __exit__(self, a, b, c):
+		self.close()
+
 class SingularSessionWorker(Worker):
 	
 	def __init__(self, init_params, hyperparam_spec):
@@ -102,22 +108,18 @@ class SingularSessionWorker(Worker):
 
 		
 	def do_step(self, steps, heartbeat, should_continue):
-		sm = self.get_model_session("train")
-		for i in range(steps):
-			_, loss = sm.run([sm.model.train_op, sm.model.loss])
-			heartbeat()
-			if not should_continue():
-				break
-		sm.close()
+		with self.get_model_session("train") as sm:
+			for i in range(steps):
+				_, loss = sm.run([sm.model.train_op, sm.model.loss])
+				heartbeat()
+				should_continue()
+
 			
 
 	def do_eval(self):
-		sm = self.get_model_session("eval")
-
-		for i in range(self.init_params["eval_steps"]):
-			r = sm.run(sm.model.eval_metric_ops)
-
-		sm.close()
+		with self.get_model_session("eval") as sm:
+			for i in range(self.init_params["eval_steps"]):
+				r = sm.run(sm.model.eval_metric_ops)
 
 		return {
 			k: float(v[0])

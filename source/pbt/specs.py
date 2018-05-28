@@ -3,6 +3,16 @@ import uuid
 import time
 import collections
 import platform
+import petname
+
+class BaseSpec(object):
+	def __init__(self, group):
+		self.id = uuid.uuid1()
+		self.from_hostname = platform.node()
+		self.time_sent = time.time()
+		self.group = group
+
+
 
 RunSpec = collections.namedtuple('RunSpec', [
 	'id',
@@ -33,14 +43,16 @@ HeartbeatSpec = collections.namedtuple('HeartbeatSpec', [
 	'from_hostname',
 	'run_id',
 	'worker_id', 
-	'run_token',
+	'tiebreaker',
 	'total_steps',
 	'time_sent'])
 
 GiveUpSpec = collections.namedtuple('GiveUpSpec', [
 	'group',
 	'from_hostname',
-	'run_id'
+	'time_sent',
+	'run_id',
+	'worker_id'
 ])
 
 
@@ -48,7 +60,7 @@ GiveUpSpec = collections.namedtuple('GiveUpSpec', [
 class WorkerHeader(object):
 
 	def __init__(self, params):
-		self.id = uuid.uuid1()
+		self.id = petname.Generate(3,'-') + "-" + uuid.uuid1()
 		self.results = None
 		self.time_last_updated = 0
 		self.total_steps = 0

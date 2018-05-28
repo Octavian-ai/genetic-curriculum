@@ -130,6 +130,7 @@ class Worker(object):
 	def step_and_eval(self, steps, heartbeat, should_continue):
 		logger.info("{}.train({})".format(self.id, steps))
 		self.step(steps, heartbeat, should_continue)
+		should_continue()
 		logger.info("{}.eval()".format(self.id))
 		return self.eval()
 

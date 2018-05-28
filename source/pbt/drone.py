@@ -5,7 +5,9 @@ import pickle
 import time
 import collections
 import platform
+import uuid
 import random
+import petname
 
 import logging
 logger = logging.getLogger(__name__)
@@ -25,6 +27,9 @@ class Drone(object):
 		self.init_params = init_params
 		self.worker_cache = {}
 		self.run_max = {}
+		self.drone_id = petname.Generate(3, '-') #uuid.uuid1()
+
+		self.logger = logging.getLogger(__name__ + "." + self.drone_id)
 
 		self.performance = []
 		self.steps_per_sec = 0
@@ -32,7 +37,7 @@ class Drone(object):
 		self.time_last_token_check = 0
 
 		self.queue_result = QueueFactory.vend(self.args, "result", "result_shared", "result")
-		self.queue_heartbeat = QueueFactory.vend(self.args, "result", platform.node(), "heartbeat")
+		self.queue_heartbeat = QueueFactory.vend(self.args, "result", str(self.drone_id), "heartbeat")
 		self.queue_run = QueueFactory.vend(self.args, "run", "run_shared", "run")
 
 
@@ -50,42 +55,47 @@ class Drone(object):
 
 		self.queue_result.send(result_spec)
 
-	def _send_heartbeat(self, worker, run_spec, run_token):
-		if time.time() - self.time_last_heartbeat > self.args.job_timeout/3:
+	def _send_heartbeat(self, worker, run_spec, tiebreaker):
+		if time.time() - self.time_last_heartbeat > self.args.job_timeout / 6:
 			spec = HeartbeatSpec(
 				self.args.run, 
 				platform.node(),
 				run_spec.id,
 				worker.id, 
-				run_token, 
+				tiebreaker, 
 				worker.total_steps,
 				time.time())
 
 			self.queue_heartbeat.send(spec)
-			logger.debug("{}.send_heartbeat()".format(worker.id))
 			self.time_last_heartbeat = time.time()
 
 	def _handle_heartbeat(self, spec):
-		if time.time() - self.time_last_token_check > self.args.job_timeout/3:
-			cur = self.run_max.get(spec.worker_id, 0)
-			self.run_max[spec.worker_id] = max(cur, spec.total_steps + spec.run_token)
+		cur = self.run_max.get(spec.worker_id, 0)
+		self.run_max[spec.worker_id] = max(cur, spec.total_steps + spec.tiebreaker)
+		self.logger.debug(self.run_max)
+
+	def _should_continue(self, worker, run_spec, tiebreaker):
+		if time.time() - self.time_last_token_check > self.args.job_timeout / 6:
+			self.queue_heartbeat.get_messages(lambda m, ack, nack: self._handle_heartbeat(m))
 			self.time_last_token_check = time.time()
 
-	def _should_continue(self, worker, run_spec, run_token):
-		self.queue_heartbeat.get_messages(lambda m, ack, nack: self._handle_heartbeat(m))
-
 		try:
-			should = self.run_max[run_spec.worker_id] <= run_token + worker.total_steps
+			should = self.run_max[run_spec.worker_id] <= tiebreaker + worker.total_steps
 			if not should:
 				self.queue_result.send(GiveUpSpec(
 					self.args.run,
 					platform.node(),
-					run_spec.id
+					time.time(),
+					run_spec.id,
+					worker.id					
 				))
-				logger.debug("Should not continue, heard another heartbeat with higher run")
-			return should
-		except Exception:
-			return True
+				self.logger.info("Should not continue, heard another heartbeat with higher run")
+				raise StopIteration()
+			
+		except KeyError:
+			pass
+
+		return True
 
 
 	def _handle_run(self, run_spec):
@@ -101,14 +111,21 @@ class Drone(object):
 		
 		try:
 			time_start = time.time()
-			logger.info("{}.step_and_eval({}, {})".format(run_spec.worker_id, run_spec.macro_step, run_spec.micro_step))
-			run_token = random.random()
-			for i in range(run_spec.macro_step):
-				worker.step_and_eval(
-					run_spec.micro_step, 
-					lambda:self._send_heartbeat(worker, run_spec, run_token),
-					lambda:self._should_continue(worker, run_spec, run_token))
-				self._send_result(run_spec, worker, True)
+			self.logger.info("{}.step_and_eval({}, {})".format(run_spec.worker_id, run_spec.macro_step, run_spec.micro_step))
+			
+			self.time_last_heartbeat = 0
+			self.time_last_token_check = 0
+			tiebreaker = random.random()
+
+			send_heartbeat  = lambda:self._send_heartbeat(worker, run_spec, tiebreaker)
+			should_continue = lambda:self._should_continue(worker, run_spec, tiebreaker)
+
+			try:
+				for i in range(run_spec.macro_step):
+					worker.step_and_eval(run_spec.micro_step, send_heartbeat, should_continue)
+					self._send_result(run_spec, worker, True)
+			except StopIteration:
+				pass
 
 			self.performance.append(Perf(time_start, time.time(), run_spec.micro_step * run_spec.macro_step))
 			self.print_performance()
@@ -130,7 +147,7 @@ class Drone(object):
 			steps = sum([i.steps for i in perf])
 
 			self.steps_per_sec = steps / duration
-			logger.info("Steps per second: {}".format(self.steps_per_sec))
+			self.logger.info("Steps per second: {}".format(self.steps_per_sec))
 
 
 

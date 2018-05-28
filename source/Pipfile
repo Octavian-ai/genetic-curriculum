@@ -20,6 +20,7 @@ google-cloud-pubsub = "*"
 pyaml = "*"
 pika = "*"
 coloredlogs = "*"
+petname = "*"
 
 
 [requires]

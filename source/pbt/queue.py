@@ -12,8 +12,9 @@ import pika
 
 class Queue(object):
 
-	def __init__(self, args):
+	def __init__(self, args, logger):
 		self.args = args
+		self.logger = logger
 
 	def send(self, message):
 		pass
@@ -35,12 +36,13 @@ class Queue(object):
 
 		if time.time() - spec.time_sent < self.args.message_timeout:
 			if spec.group != self.args.run:
-				logger.debug("Message for other group {}".format(spec.group))
+				self.logger.debug("Message for other group {}".format(spec.group))
 				nack()
 			else:
+				self.logger.debug("Received {}".format(spec))
 				callback(spec, ack, nack)
 		else:
-			logger.debug("Timed out message")
+			self.logger.debug("Timed out message")
 			ack()
 
 	def close(self, callback):
@@ -104,13 +106,12 @@ class RabbitQueue(Queue):
 	connection = None
 
 	def __init__(self, args, exchange, queue, topic):
-		super().__init__(args)
+		logger = logging.getLogger(__name__ + "." + exchange + "." + queue + "." + topic)
+		super().__init__(args, logger)
 
 		self.topic    = args.run + "." + topic
 		self.queue    = args.run + "." + queue
 		self.exchange = args.run + "." + exchange
-
-		self.logger = logging.getLogger(__name__ + "." + exchange + "." + queue + "." + topic)
 
 
 	def send(self, message):
