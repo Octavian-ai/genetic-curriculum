@@ -60,7 +60,7 @@ GiveUpSpec = collections.namedtuple('GiveUpSpec', [
 class WorkerHeader(object):
 
 	def __init__(self, params):
-		self.id = petname.Generate(3,'-') + "-" + uuid.uuid1()
+		self.id = petname.Generate(3,'-') + "-" + str(uuid.uuid1())
 		self.results = None
 		self.time_last_updated = 0
 		self.total_steps = 0
