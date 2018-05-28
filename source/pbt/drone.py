@@ -73,7 +73,6 @@ class Drone(object):
 	def _handle_heartbeat(self, spec):
 		cur = self.run_max.get(spec.worker_id, 0)
 		self.run_max[spec.worker_id] = max(cur, spec.total_steps + spec.tiebreaker)
-		self.logger.debug(self.run_max)
 
 	def _should_continue(self, worker, run_spec, tiebreaker):
 		if time.time() - self.time_last_token_check > self.args.job_timeout / 6:

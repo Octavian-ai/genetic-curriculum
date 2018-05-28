@@ -14,7 +14,7 @@ from util import path_exists
 import logging
 logger = logging.getLogger(__name__)
 
-tf.logging.set_verbosity("INFO")
+# tf.logging.set_verbosity("INFO")
 
 class ModelSession(object):
 	def __init__(self, init_params, friendly_params, model_dir, warm_start_dir, mode):
