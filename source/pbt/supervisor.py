@@ -186,7 +186,9 @@ class Supervisor(object):
 		
 		n20 = max(round(len(self.workers) * self.args.exploit_pct), 1)
 		top20 = stack[-n20:]
-		top20 = [i for i in top20 if i.results is not None]
+
+		# Dont clone a fresh clone
+		top20 = [i for i in top20 if i.total_steps >= self.args.micro_step]
 
 		if len(top20) > 0:
 			return random.choice(top20)
@@ -199,7 +201,7 @@ class Supervisor(object):
 		try:
 			mentor = self.get_mentor()
 			params = mentor.params.mutate(self.args.heat)
-			logger.info("New worker from {}.mutate()".format(mentor.id))
+			logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps, mentor.params["heritage"].v))
 			results = mentor.results
 
 		except ValueError:

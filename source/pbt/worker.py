@@ -74,12 +74,6 @@ class Worker(object):
 		self._params = params
 		# self.experiment.log_multiple_params(vars(self.friendly_params))
 
-	def explore(self, heat):
-		return {
-			k:v.mutate(heat) for k, v in self.params.items()
-		}
-
-
 	# Experimental, plan to roll this out everywhere to replace params
 	@property
 	def friendly_params(self):

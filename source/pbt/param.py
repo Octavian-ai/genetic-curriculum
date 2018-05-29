@@ -8,6 +8,8 @@ import copy
 import uuid
 import collections
 
+from util import path_exists
+
 FP = collections.namedtuple('FallbackParam', ['value'])
 
 class GeneticParam(object):
@@ -133,13 +135,13 @@ class LRParam(GeneticParam):
 class Heritage(GeneticParam):
 		
 		def vend(self):
-				return random.choice(string.ascii_letters)
+			return random.choice(string.ascii_letters)
 		
 		def __init__(self, v=""):
-				self.v = v + self.vend()
+			self.v = v + self.vend()
 		
 		def mutate(self, heat=1.0):
-				return type(self)(self.v)
+			return type(self)(self.v)
 
 
 
@@ -147,17 +149,31 @@ class Heritage(GeneticParam):
 class ModelId(GeneticParam):
 	
 	def vend(self):
-			return str(uuid.uuid1())
+		return str(uuid.uuid1())
 	
 	def __init__(self, v={}):
-			self.v = {
-				"cur": self.vend(), 
-				"warm_start_from": v.get("cur", None)
-			}
+		self.v = v
+		
+		# Ensure we have an id
+		if "cur" not in self.v:
+			self.v["cur"] = self.vend()
+
+		if "warm_start_from" not in self.v:
+			self.v["warm_start_from"] = None
 	
 	def mutate(self, heat):
-			return type(self)(self.v)
-		
+
+		cur_path = self.v.get("cur", None)
+		cur_exists = cur_path is not None and path_exists(cur_path)
+		warm_start_from = cur_path if cur_exists else self.v["warm_start_from"]
+
+		return type(self)({
+			"cur": self.vend(), 
+			"warm_start_from": warm_start_from
+		})
+	
+	def __str__(self):
+		return str(self.v)
 
 
 class VariableParam(InitableParam):

@@ -68,7 +68,7 @@ class ModelSession(object):
 			# logger.debug("model_dir: {}  warm_start_dir: {}".format(self.model_dir, self.warm_start_dir))
 
 			# Transparent across GCS and local paths
-			if path_exists(self.init_params["bucket"], os.path.join(self.model_dir, "checkpoint")):
+			if path_exists(self.model_dir):
 				# We should resume from that location
 				load_dir = self.model_dir
 			else:
