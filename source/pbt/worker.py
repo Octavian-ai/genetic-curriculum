@@ -89,7 +89,11 @@ class Worker(object):
 	# @returns dirictory string to save model to
 	@property
 	def model_dir(self):
-		return os.path.join(self.init_params["model_dir"], self.init_params["run"], self.friendly_params["model_id"]["cur"])
+		if self.friendly_params["model_id"]["cur"] is None:
+			return None
+		else:
+			return os.path.join(self.init_params["model_dir"], self.init_params["run"], self.friendly_params["model_id"]["cur"])
+
 	
 	# Will crash if model_id param missing	
 	# @returns directory string to warm start model from or None if model should not warm start	

@@ -65,8 +65,6 @@ class ModelSession(object):
 					)
 				)
 
-			# logger.debug("model_dir: {}  warm_start_dir: {}".format(self.model_dir, self.warm_start_dir))
-
 			# Transparent across GCS and local paths
 			if path_exists(self.model_dir):
 				# We should resume from that location
@@ -75,7 +73,8 @@ class ModelSession(object):
 				# We should try to warm start
 				load_dir = self.warm_start_dir
 
-			# logger.debug("checkpoint_dir {}".format(load_dir))
+			# logger.debug("model_dir: {}  warm_start_dir: {}".format(self.model_dir, self.warm_start_dir))
+			# logger.debug("load from {}".format(load_dir))
 
 			self.sess = tf.train.SingularMonitoredSession(
 				hooks=hooks, checkpoint_dir=load_dir
