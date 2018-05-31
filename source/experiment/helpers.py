@@ -118,6 +118,9 @@ def score(worker):
 	except Exception:
 		return None
 
+def name_fn(worker):
+	return worker.params["heritage"].value + "_" + str(worker.id)[-5:-1]
+
 def gen_baseline_params(args):
 
 	def g():
@@ -150,7 +153,7 @@ def gen_baseline_params(args):
 	return g
 
 def get_supervisor(args):
-	return Supervisor(args, gen_param_spec(args), score, False, gen_baseline_params=gen_baseline_params(args))
+	return Supervisor(args, gen_param_spec(args), score, name_fn, False, gen_baseline_params=gen_baseline_params(args))
 
 
 

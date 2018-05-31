@@ -24,10 +24,11 @@ class Supervisor(object):
 	# Initialisation and basic lifespan steps
 	# --------------------------------------------------------------------------
 
-	def __init__(self, args, param_spec, score, reverse=False, gen_baseline_params=None):
+	def __init__(self, args, param_spec, score, name_fn=None, reverse=False, gen_baseline_params=None):
 		self.args = args
 		self.param_spec = param_spec
 		self.score = score
+		self.name_fn = name_fn if name_fn is not None else lambda x:str(x.id)
 		self.reverse = reverse
 		self.gen_baseline_params = gen_baseline_params
 
@@ -110,7 +111,7 @@ class Supervisor(object):
 			else:
 				for i in range(delta):
 					self.add_worker()
-					
+
 		elif delta < 0:
 			for i in range(-delta):
 				self.remove_worker()
@@ -121,7 +122,7 @@ class Supervisor(object):
 			try:
 				mentor = self.get_mentor()
 				params = mentor.params.mutate(self.args.heat)
-				logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps, mentor.params["heritage"].v))
+				logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps))
 				results = mentor.results
 
 			except ValueError:
@@ -303,10 +304,7 @@ class Supervisor(object):
 	def print_worker_results(self, worker):
 		if worker.results is not None:
 
-			try:
-				name = worker.params["heritage"].value
-			except:
-				name = str(worker.id)
+			name = self.name_fn(worker)
 
 			for key in worker.results:
 				self.ensure_has_measure(key)
