@@ -100,14 +100,17 @@ class Supervisor(object):
 
 	def scale_workers(self):
 		delta = self.args.n_workers - len(self.workers)
-	
+
 		if delta > 0:
 			if self.args.run_baseline:
-				for i in self.gen_baseline_params()[:delta]:
+				baseline_set = self.gen_baseline_params()[len(self.workers) : len(self.workers)+delta]
+				for i in baseline_set:
+					logger.info("New worker from baseline set")
 					self.add_worker(params=i)
 			else:
 				for i in range(delta):
 					self.add_worker()
+					
 		elif delta < 0:
 			for i in range(-delta):
 				self.remove_worker()
