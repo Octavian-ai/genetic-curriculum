@@ -14,7 +14,7 @@ from util import path_exists
 import logging
 logger = logging.getLogger(__name__)
 
-# tf.logging.set_verbosity("INFO")
+tf.logging.set_verbosity("INFO")
 
 class ModelSession(object):
 	def __init__(self, init_params, friendly_params, model_dir, warm_start_dir, mode):
@@ -73,8 +73,7 @@ class ModelSession(object):
 				# We should try to warm start
 				load_dir = self.warm_start_dir
 
-			# logger.debug("model_dir: {}  warm_start_dir: {}".format(self.model_dir, self.warm_start_dir))
-			# logger.debug("load from {}".format(load_dir))
+			logger.debug("model_dir: {}  warm_start_dir: {} load from:{}".format(self.model_dir, self.warm_start_dir, load_dir))
 
 			self.sess = tf.train.SingularMonitoredSession(
 				hooks=hooks, checkpoint_dir=load_dir
@@ -148,7 +147,7 @@ class SingularSessionWorker(Worker):
 		}
 
 	def __setstate__(self, state):
-		self.id             = state.get("id", uuid.uuid1())
+		self.id             = state.get("id", uuid.uuid4())
 		self.time_started 	= 0
 		self.performance 	= (0,0)
 		

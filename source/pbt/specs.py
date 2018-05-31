@@ -7,7 +7,7 @@ import petname
 
 class BaseSpec(object):
 	def __init__(self, group):
-		self.id = uuid.uuid1()
+		self.id = uuid.uuid4()
 		self.from_hostname = platform.node()
 		self.time_sent = time.time()
 		self.group = group
@@ -61,13 +61,14 @@ GiveUpSpec = collections.namedtuple('GiveUpSpec', [
 class WorkerHeader(object):
 
 	def __init__(self, params):
-		self.id = petname.Generate(3,'-') + "-" + str(uuid.uuid1())
+		self.id = petname.Generate(3,'-') + "-" + str(uuid.uuid4())
+		self.params = params
+
 		self.results = None
 		self.time_last_updated = 0
 		self.total_steps = 0
 		self.recent_steps = 0
 
-		self.params = params
 
 	def update_from_result_spec(self, result_spec):
 		self.total_steps = result_spec.total_steps
@@ -82,7 +83,7 @@ class WorkerHeader(object):
 
 	def gen_run_spec(self, args):
 		return RunSpec(
-			uuid.uuid1(),
+			uuid.uuid4(),
 			args.run, 
 			self.id, 
 			platform.node(),

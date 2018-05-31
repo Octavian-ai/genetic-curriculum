@@ -100,11 +100,11 @@ class EstimatorWorker(Worker):
       except Exception as e:
         traceback.print_exc()
         print(self._params)
-        model_dir = self.init_params["model_dir"] + str(uuid.uuid1())
+        model_dir = self.init_params["model_dir"] + str(uuid.uuid4())
         warm_start = None
 
     else:
-      model_dir = self.init_params["model_dir"] + str(uuid.uuid1())
+      model_dir = self.init_params["model_dir"] + str(uuid.uuid4())
       warm_start = None
 
     self.estimator = tf.estimator.Estimator(

@@ -28,7 +28,26 @@ pipenv shell
 ```
 
 
-## Deploying to Kubernetes
+## Deploying to Kubernetes (A cheatsheet of K8 runes)
+
+### Install RabitMQ
+
+- Install Helm
+- Initialise Helm on your cluster as per their docs
+
+Give helm permissions on GKE:
+```
+kubectl create clusterrolebinding --user system:serviceaccount:kube-system:default kube-system-cluster-admin --clusterrole cluster-admin
+```
+
+Install a queue:
+```
+helm install --name one --set rabbitmq.username=admin,rabbitmq.password=secretpassword,rabbitmq.erlangCookie=secretcookie     stable/rabbitmq
+```
+
+Check the console output to get the AMPQ url and password for your new queue
+
+### Install our PBT application
 
 Update secret.yaml to have the url to your AMQP queue.
 
@@ -51,3 +70,4 @@ To see dashboard:
 gcloud config config-helper --format=json | jq --raw-output '.credential.access_token'
 kubectl proxy
 ```
+

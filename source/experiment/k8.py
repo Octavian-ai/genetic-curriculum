@@ -12,6 +12,7 @@ import platform
 import time
 import pika
 import threading
+import traceback
 
 from .helpers import *
 
@@ -69,6 +70,10 @@ def do_drone(args):
 		if drone is not None:
 			drone.close()
 
+	except Exception as e:
+		traceback.print_exc()
+		raise e
+
 def do_supervisor(args):
 	sup = None
 
@@ -94,17 +99,17 @@ def do_supervisor(args):
 		if sup is not None:
 			sup.close()
 
+	except Exception as e:
+		traceback.print_exc()
+		raise e
+
 
 # --------------------------------------------------------------------------
 # Dispatch threads from main loop
 # --------------------------------------------------------------------------
 
-
-if __name__ == "__main__":
-
-	args = get_args()
+def run_main_dispatch(args):
 	my_sup = None
-
 	my_drones = { k:None for k in range(args.n_drones) }
 
 	try:
@@ -130,4 +135,9 @@ if __name__ == "__main__":
 		pass
 
 
+
+if __name__ == "__main__":
+	args = get_args()
+	run_main_dispatch(args)
+	
 

@@ -47,9 +47,6 @@ class DatasetParam(GeneticParam):
 			**self.metric
 		)
 
-	def __str__(self):
-		return str(self.v)
-
 	def __eq__(self, other):
 		self.v == other.v
 
@@ -121,9 +118,39 @@ def score(worker):
 	except Exception:
 		return None
 
+def gen_baseline_params(args):
+
+	def g():
+		"""This is a set of params for generating the 'baseline' workers, e.g. the reference
+		   that this experiment is trying to out-perform
+		   """
+
+		param_spec = gen_param_spec(args)
+
+		lengths = [pow(2,i) for i in range(0, 6)]
+		repeats = [pow(2,i) for i in range(0, 6)]
+
+		datasets = []
+
+		for i in lengths:
+			for j in repeats:
+				datasets.append(DatasetParam(args.batch_size, {
+					"length":  RangeParam([FixedParam(i), FixedParam(i)]),
+					"repeats": RangeParam([FixedParam(j), FixedParam(j)]),
+				}))
+
+		param_sets = []
+		for i in datasets:
+			params = param_spec.realize()
+			params["dataset"] = i
+			param_sets.append(params)
+
+		return param_sets
+
+	return g
 
 def get_supervisor(args):
-	return Supervisor(args, gen_param_spec(args), score, False)
+	return Supervisor(args, gen_param_spec(args), score, False, gen_baseline_params=gen_baseline_params(args))
 
 
 

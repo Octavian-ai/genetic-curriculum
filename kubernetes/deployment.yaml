@@ -7,10 +7,10 @@ metadata:
   generation: 1
   labels:
     app: pbt
-  name: pbt-big
+  name: pbt
   namespace: default
-  resourceVersion: "1720336"
-  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt-big
+  resourceVersion: "1955311"
+  selfLink: /apis/extensions/v1beta1/namespaces/default/deployments/pbt
   uid: 4039acbe-5c62-11e8-ba28-42010a8000b8
 spec:
   replicas: 20
@@ -31,15 +31,19 @@ spec:
       containers:
       - env:
         - name: N_WORKERS
-          value: "20"
-        - name: RUN
-          value: cloud-v14
-        - name: AMQP_URL
-          value: amqp://fndicfmj:qCj7dwrZrGuOlLYPMDsNW08OLEype9_Q@black-boar.rmq.cloudamqp.com/fndicfmj?heartbeat=0
+          value: "1"
+        - name: MACRO_STEP
+          value: "5"
+        - name: MICRO_STEP
+          value: "100"
+        - name: MAX_REPEATS
+          value: "10"
         - name: MAX_LENGTH
           value: "5"
-        - name: MAX_REPEATS
-          value: "20"
+        - name: RUN
+          value: cloud-v17
+        - name: AMQP_URL
+          value: amqp://admin:secretpassword@one-rabbitmq.default.svc.cluster.local:5672
         image: gcr.io/octavian-181621/github-octavian-ai-genetic-curriculum
         imagePullPolicy: Always
         name: github-octavian-ai-genetic-curriculum

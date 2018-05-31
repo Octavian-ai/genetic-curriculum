@@ -20,11 +20,16 @@ from util import FileWritey, FileReadie
 
 class Supervisor(object):
 
-	def __init__(self, args, param_spec, score, reverse=False):
+	# --------------------------------------------------------------------------
+	# Initialisation and basic lifespan steps
+	# --------------------------------------------------------------------------
+
+	def __init__(self, args, param_spec, score, reverse=False, gen_baseline_params=None):
 		self.args = args
 		self.param_spec = param_spec
 		self.score = score
 		self.reverse = reverse
+		self.gen_baseline_params = gen_baseline_params
 
 		self.workers = {}
 		
@@ -46,10 +51,6 @@ class Supervisor(object):
 		
 		if self.args.load:
 			self.load()
-
-	@property
-	def file_path(self):
-		return os.path.join(self.args.output_dir, self.args.run, "workers.pkl")
 		
 	def load(self):
 		logger.info("Trying to load workers from " + self.file_path)
@@ -78,6 +79,199 @@ class Supervisor(object):
 			yaml.dump(self.workers, file)
 			
 		self.time_last_save = time.time()
+
+
+	# --------------------------------------------------------------------------
+	# Core loop
+	# --------------------------------------------------------------------------
+	
+	def run_epoch(self):
+		self.scale_workers()
+		self.dispatch_idle()
+		self.consider_save()
+		self.consider_print()
+		self.get_messages()
+
+	
+
+	# --------------------------------------------------------------------------
+	# Scale workers up and down
+	# --------------------------------------------------------------------------
+
+	def scale_workers(self):
+		delta = self.args.n_workers - len(self.workers)
+	
+		if delta > 0:
+			if self.args.run_baseline:
+				for i in self.gen_baseline_params()[:delta]:
+					self.add_worker(params=i)
+			else:
+				for i in range(delta):
+					self.add_worker()
+		elif delta < 0:
+			for i in range(-delta):
+				self.remove_worker()
+
+
+	def add_worker(self, params=None, results=None):
+		if params is None:
+			try:
+				mentor = self.get_mentor()
+				params = mentor.params.mutate(self.args.heat)
+				logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps, mentor.params["heritage"].v))
+				results = mentor.results
+
+			except ValueError:
+				logger.info("New worker from param spec realize")
+				params = self.param_spec.realize()
+
+		newbie = WorkerHeader(params)
+		newbie.results = results
+
+		self.workers[newbie.id] = newbie
+		self.dispatch(newbie)
+
+
+	def remove_worker(self):
+		if len(self.workers) > 0:
+			stack = self.get_sorted_workers()
+			if len(stack) == 0:
+				raise ValueError("Cannot remove_worker as no workers have scores yet")
+			else:
+				del self.workers[stack[0].id]	
+
+
+
+	# --------------------------------------------------------------------------
+	# The genetic part
+	# --------------------------------------------------------------------------
+
+	def get_mentor(self):
+		stack = self.get_sorted_workers()
+		
+		n20 = max(round(len(self.workers) * self.args.exploit_pct), 1)
+		top20 = stack[-n20:]
+
+		# Dont clone a fresh clone
+		top20 = [i for i in top20 if i.total_steps >= self.args.micro_step]
+
+		if len(top20) > 0:
+			return random.choice(top20)
+
+		raise ValueError("No top workers have results yet")
+
+	def consider_exploit(self, worker):
+		if worker.recent_steps >= self.args.micro_step * self.args.macro_step:
+
+			worker.recent_steps = 0
+			stack = self.get_sorted_workers()
+
+			try:
+				idx = stack.index(worker)
+
+				# if we have enough results
+				if len(stack) > 1 and len(stack) > len(self.workers)/2: 
+					nLower = max(len(stack) * self.args.exploit_pct,1)
+
+					# proportionally cull the bottom tranche
+					if idx < nLower:
+						del self.workers[worker.id]
+						logger.info("del {}".format(worker.id))
+
+						self.add_worker() # dispatches the worker
+						return
+
+			except ValueError:
+				# It's ok we couldn't index that worker, it means they've no score yet
+				pass
+
+			self.dispatch(worker)
+
+
+
+	# --------------------------------------------------------------------------
+	# Send tasks out for work
+	# --------------------------------------------------------------------------
+
+	def dispatch(self, worker):
+		"""Request drone runs this worker"""
+		run_spec = worker.gen_run_spec(self.args)
+		self.queue_run.send(run_spec)
+		logger.info('{}.dispatch({},{})'.format(worker.id, run_spec.macro_step, run_spec.micro_step))
+		worker.time_last_updated = time.time()
+		worker.time_last_dispatched = time.time()
+
+	def dispatch_idle(self):
+		for i in self.workers.values():
+			if time.time() - i.time_last_updated > self.args.job_timeout:
+				logger.warning('{}.dispatch_idle()'.format(i.id))
+				self.dispatch(i)
+
+
+
+
+	# --------------------------------------------------------------------------
+	# Messaging queue logistics
+	# --------------------------------------------------------------------------
+
+	def _handle_result(self, spec, ack, nack):		
+		if spec.worker_id in self.workers:
+			i = self.workers[spec.worker_id]
+
+			if isinstance(spec, HeartbeatSpec):
+				i.time_last_updated = time.time()
+				# logger.debug("{}.record_heartbeat({}, {}, {})".format(spec.worker_id, spec.from_hostname, spec.total_steps, spec.run_id, spec.tiebreaker))
+
+			elif isinstance(spec, ResultSpec):
+				if spec.success:
+					if spec.total_steps > i.total_steps:
+						i.update_from_result_spec(spec)
+						logger.info("{}.record_result({})".format(spec.worker_id, spec))
+
+						self.print_dirty = True
+						self.print_worker_results(i)
+						
+						self.consider_exploit(i)
+					else:
+						logger.warning("{} received results for {} < current total_steps {}".format(spec.worker_id, spec.total_steps, i.total_steps))
+
+				elif not self.args.run_baseline:
+					logger.info("del {}".format(spec.worker_id))
+					del self.workers[spec.worker_id]
+					self.add_worker()
+
+				else:
+					self.dispatch(i)
+			
+			elif isinstance(spec, GiveUpSpec):
+				pass
+
+			else:
+				logger.warning("Received unknown message type {}".format(type(spec)))
+		else:
+			logger.debug("{} worker not found for message {}".format(spec.worker_id, spec))
+
+		# Swallow bad messages
+		# The design is for the supervisor to re-send and to re-spawn drones
+		ack()
+
+	def get_messages(self):
+		self.queue_result.get_messages(lambda spec, ack, nack: self._handle_result(spec, ack, nack))
+
+	def close(self):
+		self.queue_result.close()
+		self.queue_run.close()
+
+
+
+
+
+
+
+	# --------------------------------------------------------------------------
+	# Helpers
+	# --------------------------------------------------------------------------
+
 
 	def get_sorted_workers(self):
 		"""Workers for which no score is known will not be returned"""
@@ -170,152 +364,11 @@ class Supervisor(object):
 		if time.time() - self.time_last_print > self.args.print_secs and self.print_dirty:
 			self.print()
 
+	@property
+	def file_path(self):
+		return os.path.join(self.args.output_dir, self.args.run, "workers.pkl")
 
-	def scale_workers(self):
-		delta = self.args.n_workers - len(self.workers)
-
-		if delta > 0:
-			for i in range(delta):
-				self.add_worker()
-		elif delta < 0:
-			for i in range(-delta):
-				self.remove_worker()
-
-	def get_mentor(self):
-		stack = self.get_sorted_workers()
-		
-		n20 = max(round(len(self.workers) * self.args.exploit_pct), 1)
-		top20 = stack[-n20:]
-
-		# Dont clone a fresh clone
-		top20 = [i for i in top20 if i.total_steps >= self.args.micro_step]
-
-		if len(top20) > 0:
-			return random.choice(top20)
-
-		raise ValueError("No top workers have results yet")
-			
-
-
-	def add_worker(self):
-		try:
-			mentor = self.get_mentor()
-			params = mentor.params.mutate(self.args.heat)
-			logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps, mentor.params["heritage"].v))
-			results = mentor.results
-
-		except ValueError:
-			logger.info("New worker from param spec realize")
-			params = self.param_spec.realize()
-			results = None
-
-		newbie = WorkerHeader(params)
-		newbie.results = results
-		self.workers[newbie.id] = newbie
-		self.dispatch(newbie)
-
-
-	def remove_worker(self):
-		if len(self.workers) > 0:
-			stack = self.get_sorted_workers()
-			del self.workers[stack[0].id]	
-
-
-	def consider_exploit(self, worker):
-		if worker.recent_steps >= self.args.micro_step * self.args.macro_step:
-
-			worker.recent_steps = 0
-			stack = self.get_sorted_workers()
-
-			try:
-				idx = stack.index(worker)
-
-				# if we have enough results
-				if len(stack) > 1 and len(stack) > len(self.workers)/2: 
-					nLower = max(len(stack) * self.args.exploit_pct,1)
-
-					# proportionally cull the bottom tranche
-					if idx < nLower:
-						del self.workers[worker.id]
-						logger.info("del {}".format(worker.id))
-
-						self.add_worker() # dispatches the worker
-						return
-
-			except ValueError:
-				# It's ok we couldn't index that worker, it means they've no score yet
-				pass
-
-			self.dispatch(worker)
-
-
-	def dispatch(self, worker):
-		"""Request drone runs this worker"""
-		run_spec = worker.gen_run_spec(self.args)
-		self.queue_run.send(run_spec)
-		logger.info('{}.dispatch({},{})'.format(worker.id, run_spec.macro_step, run_spec.micro_step))
-		worker.time_last_updated = time.time()
-		worker.time_last_dispatched = time.time()
-
-	def dispatch_idle(self):
-		for i in self.workers.values():
-			if time.time() - i.time_last_updated > self.args.job_timeout:
-				logger.warning('{}.dispatch_idle()'.format(i.id))
-				self.dispatch(i)
-
-
-	def _handle_result(self, spec, ack, nack):		
-		if spec.worker_id in self.workers:
-			i = self.workers[spec.worker_id]
-
-			if isinstance(spec, HeartbeatSpec):
-				i.time_last_updated = time.time()
-				# logger.debug("{}.record_heartbeat({}, {}, {})".format(spec.worker_id, spec.from_hostname, spec.total_steps, spec.run_id, spec.tiebreaker))
-
-			elif isinstance(spec, ResultSpec):
-				if spec.success:
-					if spec.total_steps > i.total_steps:
-						i.update_from_result_spec(spec)
-						logger.info("{}.record_result({})".format(spec.worker_id, spec))
-
-						self.print_dirty = True
-						self.print_worker_results(i)
-						
-						self.consider_exploit(i)
-					else:
-						logger.warning("{} received results for {} < current total_steps {}".format(spec.worker_id, spec.total_steps, i.total_steps))
-
-				else:
-					logger.info("del {}".format(spec.worker_id))
-					del self.workers[spec.worker_id]
-					self.add_worker()
-			
-			elif isinstance(spec, GiveUpSpec):
-				pass
-
-			else:
-				logger.warning("Received unknown message type {}".format(type(spec)))
-		else:
-			logger.debug("{} worker not found for message {}".format(spec.worker_id, spec))
-
-		# Swallow bad messages
-		# The design is for the supervisor to re-send and to re-spawn drones
-		ack()
-
-
-	def close(self):
-		self.queue_result.close()
-		self.queue_run.close()
 	
-	def get_messages(self):
-		self.queue_result.get_messages(lambda spec, ack, nack: self._handle_result(spec, ack, nack))
-
-	def run_epoch(self):
-		self.scale_workers()
-		self.dispatch_idle()
-		self.consider_save()
-		self.consider_print()
-		self.get_messages()
 
 
 

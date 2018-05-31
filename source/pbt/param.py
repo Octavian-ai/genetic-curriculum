@@ -28,6 +28,9 @@ class GeneticParam(object):
 	
 	def __str__(self):
 		return str(self.value)
+
+	def __repr__(self):
+		return str(self.v)
 	
 	@property
 	def value(self):
@@ -112,6 +115,8 @@ class RangeParam(GeneticParam):
 		return type(self)([i.mutate(heat) for i in self.v])
 
 
+
+
 def RandIntRangeParamOf(min, max):
 	return lambda: RangeParam([
 		RandIntParamOf(min, max)(),
@@ -149,11 +154,11 @@ class Heritage(GeneticParam):
 class ModelId(GeneticParam):
 	
 	def vend(self):
-		return str(uuid.uuid1())
+		return str(uuid.uuid4())
 	
-	def __init__(self, v={}):
-		self.v = v
-		
+	def __init__(self, v=None):
+		self.v = v if v is not None else {}
+
 		# Ensure we have an id
 		if "cur" not in self.v:
 			self.v["cur"] = self.vend()
@@ -171,9 +176,6 @@ class ModelId(GeneticParam):
 			"cur": self.vend(), 
 			"warm_start_from": warm_start_from
 		})
-	
-	def __str__(self):
-		return str(self.v)
 
 
 class VariableParam(InitableParam):

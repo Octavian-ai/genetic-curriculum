@@ -44,8 +44,10 @@ def get_args(args=None):
 	parser.add_argument('--disable-save',			action='store_false',dest="save")
 	parser.add_argument('--disable-load',			action='store_false',dest="load")
 	parser.add_argument('--master-works', 			action='store_true',help="Master will also act as drone")
-
-	parser.add_argument('--n-baselines', 			type=int,  default=None)
+	parser.add_argument('--run-baseline', 			action='store_true',help="Run static baseline tests")
+	parser.add_argument('--n-baselines', 			type=int,  default=1000)
+	
+	
 	parser.add_argument('--queue-type',				type=str,  default="rabbitmq", choices=["rabbitmq","google"])
 	parser.add_argument('--amqp-url',				type=str,  default=os.getenv("AMQP_URL", 'amqp://guest:guest@localhost:5672/%2F'))
 

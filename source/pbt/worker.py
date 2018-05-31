@@ -28,7 +28,7 @@ class Worker(object):
 	def __init__(self, init_params, params):
 		
 		# self.experiment = Experiment(api_key="bRptcjkrwOuba29GcyiNaGDbj")
-		self.id = uuid.uuid1()
+		self.id = uuid.uuid4()
 		
 		self.init_params = init_params
 		self.params = params
