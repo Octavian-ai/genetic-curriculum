@@ -35,16 +35,6 @@ class FileThingy(object):
 
 # TODO: See if TF GFile can replace this
 def path_exists(path):
-  """ :param bucket The bucket from args """
-
-  # if len(path) > 5 and path[0:5] == "gs://" and bucket_name is not None:
-  #   client = storage.Client()
-  #   bucket = client.get_bucket(bucket_name)
-  #   gs_sub_path = path.replace("gs://"+bucket_name+"/", "")
-  #   return bucket.blob(gs_sub_path).exists()
-  # else:
-  #   return os.path.exists(path)
-
   return tf.gfile.Exists(path)
   
 

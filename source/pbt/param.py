@@ -8,6 +8,9 @@ import copy
 import uuid
 import collections
 
+import logging
+logger = logging.getLogger(__name__)
+
 from util import path_exists
 
 FP = collections.namedtuple('FallbackParam', ['value'])
@@ -168,9 +171,14 @@ class ModelId(GeneticParam):
 	
 	def mutate(self, heat):
 
-		cur_path = self.v.get("cur", None)
-		cur_exists = cur_path is not None and path_exists(cur_path)
-		warm_start_from = cur_path if cur_exists else self.v["warm_start_from"]
+		# cur_path = self.v.get("cur", None)
+		# cur_exists = cur_path is not None and path_exists(cur_path)
+		# warm_start_from = cur_path if cur_exists else self.v["warm_start_from"]
+		# logger.debug("Mutate ModelId! {} {} {} {}".format(self.v, cur_path, cur_exists, warm_start_from))
+
+		# I'd like to test that this directory does contain something, but it's 
+		# awkward to access args here. #injection
+		warm_start_from = self.v["cur"]
 
 		return type(self)({
 			"cur": self.vend(), 
