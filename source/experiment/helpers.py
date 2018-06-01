@@ -38,6 +38,10 @@ class DatasetParam(GeneticParam):
 	def mutate(self, heat):
 		return type(self)(self.batch_size, self._mutate_dict(heat))
 
+	@property
+	def name_str(self):
+		return "l"+ str(self.v["length"].value) + "r" + str(self.v["repeats"].value)
+
 
 	@property
 	def value(self):
@@ -119,7 +123,7 @@ def score(worker):
 		return None
 
 def name_fn(worker):
-	return worker.params["heritage"].value + "_" + str(worker.id)[-5:-1]
+	return worker.params["dataset"].name_str + "_" + worker.params["heritage"].value + "_" + str(worker.id)[-5:-1]
 
 def gen_baseline_params(args):
 
