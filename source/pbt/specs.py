@@ -95,4 +95,17 @@ class WorkerHeader(object):
 			time.time()
 		)
 
+	def dist(self, other):
+		return self.params.dist(other.params)
+
+	def breed(self, other, heat):
+		params = self.params.breed(other.params, heat)
+		return WorkerHeader(params)
+
+	def mutate(self, heat):
+		params = self.params.mutate(self.args.heat)
+		return WorkerHeader(params)
+
+
+
 

@@ -33,12 +33,19 @@ def get_args(args=None):
 	parser.add_argument('--max-grad-norm',			type=float, default=50)
 	parser.add_argument('--optimizer-epsilon',		type=float, default=1e-10)
 	parser.add_argument('--heat',					type=float, default=1.0)
-	parser.add_argument('--exploit-pct',			type=float, default=0.2)
+	parser.add_argument('--exploit-pct',			type=float, default=0.2, help="The % to cull, and to reproduce from")
+	parser.add_argument('--sexual-compatibility-min',type=float, default=0.5, help="Minimum similarity for sexual reproduction (e.g. % place in stack rank")
+	parser.add_argument('--sexual-compatibility-max',type=float, default=0.8)
+	parser.add_argument('--sexual-top-candidates',  type=int,   default=4, help="How many of the top candidates to randomly choose from")
+
+
 
 	parser.add_argument('--profile',				action='store_true')
 	parser.add_argument('--single-threaded',		action='store_true')
 	parser.add_argument('--log-tf',					action='store_true')
 	parser.add_argument('--floyd-metrics',			action='store_true')
+	parser.add_argument('--breed-sexual',			action='store_true')
+
 
 
 	parser.add_argument('--disable-save',			action='store_false',dest="save")

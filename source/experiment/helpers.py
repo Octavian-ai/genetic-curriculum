@@ -7,6 +7,9 @@ import os
 import tensorflow as tf
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 from .args import get_args
 from .model import model_fn
 
@@ -134,16 +137,19 @@ def gen_baseline_params(args):
 
 		param_spec = gen_param_spec(args)
 
-		lengths = [pow(2,i) for i in range(0, 6)]
-		repeats = [pow(2,i) for i in range(0, 6)]
+		focus_length = 2
+		focus_repeat = 8
+
+		lengths = [pow(2,i) for i in range(0, 2)]
+		repeats = [pow(2,i) for i in range(0, 4)]
 
 		datasets = []
 
 		for i in lengths:
 			for j in repeats:
 				datasets.append(DatasetParam(args.batch_size, {
-					"length":  RangeParam([FixedParam(i), FixedParam(i)]),
-					"repeats": RangeParam([FixedParam(j), FixedParam(j)]),
+					"length":  RangeParam([FixedParam(i), FixedParam(focus_length)]),
+					"repeats": RangeParam([FixedParam(j), FixedParam(focus_repeat)]),
 				}))
 
 		param_sets = []
@@ -151,6 +157,8 @@ def gen_baseline_params(args):
 			params = param_spec.realize()
 			params["dataset"] = i
 			param_sets.append(params)
+
+		logger.debug("Number of baseline sets: {}".format(len(param_sets)))
 
 		return param_sets
 

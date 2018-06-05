@@ -43,12 +43,15 @@ class GeneticParam(object):
 	def metric(self):
 		"""Used for graphing hyper-parameters"""
 		return self.value
+
+	def dist(self, other):
+		return np.linalg.norm([self.value - other.value])
 	
 
 
 class InitableParam(GeneticParam):
-		def __init__(self,v=None):
-				self.v = v
+	def __init__(self,v=None):
+		self.v = v
 
 class NaturalNumbersParam(GeneticParam):
 	def __init__(self,v=None):
@@ -118,6 +121,10 @@ class RangeParam(GeneticParam):
 		return type(self)([i.mutate(heat) for i in self.v])
 
 
+	def dist(self, other):
+		zippy = zip(self.value, other.value)
+		return np.linalg.norm([i - j for (i,j) in zippy])
+
 
 
 def RandIntRangeParamOf(min, max):
@@ -142,14 +149,17 @@ class LRParam(GeneticParam):
 
 class Heritage(GeneticParam):
 		
-		def vend(self):
-			return random.choice(string.ascii_letters)
-		
-		def __init__(self, v=""):
-			self.v = v + self.vend()
-		
-		def mutate(self, heat=1.0):
-			return type(self)(self.v)
+	def vend(self):
+		return random.choice(string.ascii_letters)
+	
+	def __init__(self, v=""):
+		self.v = v + self.vend()
+	
+	def mutate(self, heat=1.0):
+		return type(self)(self.v)
+
+	def dist(self, other):
+		return 0
 
 
 
@@ -185,6 +195,9 @@ class ModelId(GeneticParam):
 			"warm_start_from": warm_start_from
 		})
 
+	def dist(self, other):
+		return 0
+
 
 class VariableParam(InitableParam):
 		
@@ -204,6 +217,9 @@ class VariableParam(InitableParam):
 	
 	def __str__(self):
 		return str(self.v.values())
+
+	def dist(self, other):
+		raise NotImplementedError()
 	
 
 
@@ -224,5 +240,8 @@ class OptimizerParam(GeneticParam):
 			o = random.choice(self.choices)
 		
 		return type(self)(o)
+
+	def dist(self, other):
+		return 0 if self.value == other.value else 1
 
 

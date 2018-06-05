@@ -13,7 +13,7 @@ import time
 
 # from comet_ml import Experiment
 
-from .params import Params
+from .params import MergedParams
 
 import logging
 logger = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class Worker(object):
 	# Experimental, plan to roll this out everywhere to replace params
 	@property
 	def friendly_params(self):
-		return Params(self.init_params, self._params)
+		return MergedParams(self.init_params, self._params)
 		
 
 	# --------------------------------------------------------------------------

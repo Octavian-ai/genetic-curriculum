@@ -116,21 +116,35 @@ class Supervisor(object):
 			for i in range(-delta):
 				self.remove_worker()
 
+	def generate_sexual(self):
+		a = random.choice(self.workers.values())
+		b = self.find_partner(a)
+		logger.info("New worker from {}.breed({})".format(a.id,b.id))
+		c = a.breed(b)
+		return c
+
+	def generate_asexual(self):
+		mentor = self.find_mentor()
+		logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps))
+		return mentor.mutate(self.args.heat)
+
+
 
 	def add_worker(self, params=None, results=None):
 		if params is None:
 			try:
-				mentor = self.get_mentor()
-				params = mentor.params.mutate(self.args.heat)
-				logger.info("New worker from {}.mutate() total_steps:{}".format(mentor.id, mentor.total_steps))
-				results = mentor.results
+				if self.args.breed_sexual:
+					newbie = self.generate_sexual()
+				else:
+					newbie = self.generate_asexual()
 
-			except ValueError:
-				logger.info("New worker from param spec realize")
+			except Exception as ex:
+				logger.info("New worker from param spec realize ({})".format(str(ex)))
 				params = self.param_spec.realize()
-
-		newbie = WorkerHeader(params)
-		newbie.results = results
+				newbie = WorkerHeader(params)
+		else:
+			newbie = WorkerHeader(params)
+			newbie.results = results
 
 		self.workers[newbie.id] = newbie
 		self.dispatch(newbie)
@@ -139,8 +153,8 @@ class Supervisor(object):
 	def remove_worker(self):
 		if len(self.workers) > 0:
 			stack = self.get_sorted_workers()
-			if len(stack) == 0:
-				raise ValueError("Cannot remove_worker as no workers have scores yet")
+			if len(stack) < self.n_workers / 2:
+				raise ValueError("Cannot remove_worker as not enough workers have scores yet")
 			else:
 				del self.workers[stack[0].id]	
 
@@ -150,7 +164,7 @@ class Supervisor(object):
 	# The genetic part
 	# --------------------------------------------------------------------------
 
-	def get_mentor(self):
+	def find_mentor(self):
 		stack = self.get_sorted_workers()
 		
 		n20 = max(round(len(self.workers) * self.args.exploit_pct), 1)
@@ -190,6 +204,26 @@ class Supervisor(object):
 				pass
 
 			self.dispatch(worker)
+
+
+	def find_partner(self, worker):
+
+		def suitable(w):
+			return w.params is not None \
+				and w.results is not None \
+				and w.id != worker.id \
+				and self.args.sexual_compatibility_mix < w.dist(worker) < self.args.sexual_compatibility_max \
+				and self.score(w) is not None
+
+		partners = [i for i in self.workers.values() if suitable(i)]
+		sort(partners, key=self.score, reverse=self.reverse)
+		partners = partners[-self.args.sexual_top_candidates:]
+
+		return random.choice(partners)
+
+
+	
+
 
 
 

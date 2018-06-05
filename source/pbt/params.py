@@ -1,10 +1,13 @@
 
+import numpy as np
+import random
+
 import logging
 logger = logging.getLogger(__name__)
 
 from .param import GeneticParam
 
-class Params(object):
+class MergedParams(object):
 	def __init__(self, fixed, dynamic):
 		self.fixed = fixed
 		self.dynamic = dynamic
@@ -48,15 +51,29 @@ class Params(object):
 		return r
 
 
-class Mutateable(dict):
+class ParamSet(dict):
 	def mutate(self, heat):
 		return type(self)({
 			k: v.mutate(heat) for k, v in self.items()
 		})
 
+	def dist(self, other):
+		np.linalg.norm([
+			v.dist(other[k]) for k, v in self.items()
+		])
+
+	def breed(self, other, heat):
+		def cross(a,b):
+			choice = a if random.random() >= 0.5 else b
+			return choice.mutate(heat)
+
+		return type(self)({
+			k: cross(v, other[k], heat) for k, v in self.items()
+		})
+
 class ParamSpec(dict):
 	def realize(self):
-		return Mutateable({
+		return ParamSet({
 			k: v() for k, v in self.items()
 		})
 

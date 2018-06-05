@@ -141,7 +141,7 @@ class EstimatorWorker(Worker):
   # Experimental, plan to roll this out everywhere
   @property
   def friendly_params(self):
-    return Params(self.init_params, self._params)
+    return MergedParams(self.init_params, self._params)
     
   @params.setter
   def params(self, value):
