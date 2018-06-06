@@ -137,11 +137,11 @@ def gen_baseline_params(args):
 
 		param_spec = gen_param_spec(args)
 
-		focus_length = 2
-		focus_repeat = 8
+		focus_length = int(os.getenv("MAX_LENGTH", 2))
+		focus_repeat = int(os.getenv("MAX_REPEATS", 8))
 
-		lengths = [pow(2,i) for i in range(0, 2)]
-		repeats = [pow(2,i) for i in range(0, 4)]
+		lengths = [pow(2,i) for i in range(0, 6) if pow(2,i) <= focus_length]
+		repeats = [pow(2,i) for i in range(0, 6) if pow(2,i) <= focus_repeat]
 
 		datasets = []
 
@@ -157,8 +157,6 @@ def gen_baseline_params(args):
 			params = param_spec.realize()
 			params["dataset"] = i
 			param_sets.append(params)
-
-		logger.debug("Number of baseline sets: {}".format(len(param_sets)))
 
 		return param_sets
 
