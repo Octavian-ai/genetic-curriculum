@@ -33,7 +33,7 @@ class ModelSession(object):
 			self.model = self.init_params["model_fn"](
 				inpt[0],
 				inpt[1],
-				None,
+				mode,
 				self.friendly_params
 			)
 

@@ -21,6 +21,8 @@ pyaml = "*"
 pika = "*"
 coloredlogs = "*"
 petname = "*"
+bezier = "*"
+sklearn = "*"
 
 
 [requires]

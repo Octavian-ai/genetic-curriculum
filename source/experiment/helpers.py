@@ -17,6 +17,9 @@ from pbt import *
 
 from dnc import *
 
+# Ideally this should be wrapped up into an args structure, but I've yet to think out the plumbing
+MAX_LENGTH  = int(os.getenv("MAX_LENGTH", 2))
+MAX_REPEATS = int(os.getenv("MAX_REPEATS", 5))
 
 class DatasetParam(GeneticParam):
 
@@ -27,8 +30,8 @@ class DatasetParam(GeneticParam):
 
 		if self.v is None:
 			self.v = {
-				"length": RandIntRangeParamOf(1, int(os.getenv("MAX_LENGTH", 2)))(),
-				"repeats": RandIntRangeParamOf(1, int(os.getenv("MAX_REPEATS", 5)))(),
+				"length": RandIntRangeParamOf(1, MAX_LENGTH)(),
+				"repeats": RandIntRangeParamOf(1, MAX_REPEATS)(),
 			}
 
 
@@ -72,12 +75,18 @@ def DatasetParamOf(batch_size):
 		return DatasetParam(batch_size, v)
 	return m
 
+def gen_dataset_eval(args):
+	return lambda: DatasetParam(args.batch_size, {
+		"length":  RangeParam([FixedParam(MAX_LENGTH), FixedParam(MAX_LENGTH)]),
+		"repeats": RangeParam([FixedParam(MAX_REPEATS), FixedParam(MAX_REPEATS)])
+	})
 
 def gen_param_spec(args):
 	return ParamSpec({
 		"heritage": Heritage,
 		"model_id": ModelId,
-		"dataset": DatasetParamOf(args.batch_size),
+		"dataset_train": DatasetParamOf(args.batch_size),
+		"dataset_eval": gen_dataset_eval(args)
 	})
 
 
@@ -85,7 +94,8 @@ def gen_input_fn(is_eval=False):
 	def g(params):
 		def gen():
 			seed = 123 if is_eval else None
-			dataset_tensors = params["dataset"](seed)
+			src = "dataset_eval" if is_eval else "dataset_train"
+			dataset_tensors = params[src](seed)
 
 			return (
 				dataset_tensors.observations, 
@@ -126,7 +136,7 @@ def score(worker):
 		return None
 
 def name_fn(worker):
-	return worker.params["dataset"].name_str + "_" + worker.params["heritage"].value + "_" + str(worker.id)[-5:-1]
+	return worker.params["dataset_train"].name_str + "_" + worker.params["heritage"].value + "_" + str(worker.id)[-5:-1]
 
 def gen_baseline_params(args):
 
@@ -137,25 +147,22 @@ def gen_baseline_params(args):
 
 		param_spec = gen_param_spec(args)
 
-		focus_length = int(os.getenv("MAX_LENGTH", 2))
-		focus_repeat = int(os.getenv("MAX_REPEATS", 8))
-
-		lengths = [pow(2,i) for i in range(0, 6) if pow(2,i) <= focus_length]
-		repeats = [pow(2,i) for i in range(0, 6) if pow(2,i) <= focus_repeat]
+		lengths = [pow(2,i) for i in range(0, 6) if pow(2,i) <= MAX_LENGTH]
+		repeats = [pow(2,i) for i in range(0, 6) if pow(2,i) <= MAX_REPEATS]
 
 		datasets = []
 
 		for i in lengths:
 			for j in repeats:
 				datasets.append(DatasetParam(args.batch_size, {
-					"length":  RangeParam([FixedParam(i), FixedParam(focus_length)]),
-					"repeats": RangeParam([FixedParam(j), FixedParam(focus_repeat)]),
+					"length":  RangeParam([FixedParam(i), FixedParam(MAX_LENGTH)]),
+					"repeats": RangeParam([FixedParam(j), FixedParam(MAX_REPEATS)]),
 				}))
 
 		param_sets = []
 		for i in datasets:
 			params = param_spec.realize()
-			params["dataset"] = i
+			params["dataset_train"] = i
 			param_sets.append(params)
 
 		return param_sets

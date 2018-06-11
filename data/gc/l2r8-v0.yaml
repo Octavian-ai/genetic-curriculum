@@ -1,0 +1,360 @@
+barely-super-glider-522f1866-9116-4d04-992f-5d18e006e327: !!python/object:pbt.specs.WorkerHeader
+  id: barely-super-glider-522f1866-9116-4d04-992f-5d18e006e327
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.2589398319008227}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.0048853877005184}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 7.545401422577388}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 8.592736706132}
+      heritage: !!python/object:pbt.param.Heritage {v: IU}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: f549c62b-ded3-4ab5-8fd3-373d3a467c87, warm_start_from: null}
+  recent_steps: 8000
+  results: {accuracy: 0.6933088898658752, correct_elements: 46.269737243652344, loss: 12.41557502746582,
+    total_elements: 63.0625}
+  time_last_dispatched: 1527843130.735453
+  time_last_updated: 1527843228.6423633
+  total_steps: 8000
+firmly-neat-cattle-4de2ae48-80f6-49b4-9e57-0c2557d37a95: !!python/object:pbt.specs.WorkerHeader
+  id: firmly-neat-cattle-4de2ae48-80f6-49b4-9e57-0c2557d37a95
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.8495611952682092}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.2873331993095194}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 4.797544876125776}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 4.950504433709685}
+      heritage: !!python/object:pbt.param.Heritage {v: XR}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 8b683d56-e8bd-44c4-a976-505ce6bc6a6a, warm_start_from: null}
+  recent_steps: 1000
+  results: {accuracy: 0.9471305012702942, correct_elements: 54.83388137817383, loss: 0.10097179561853409,
+    total_elements: 52.25}
+  time_last_dispatched: 0
+  time_last_updated: 1527843358.2485726
+  total_steps: 61000
+fully-equal-gator-c42be26a-156b-49d1-b348-48ffb8c059c2: !!python/object:pbt.specs.WorkerHeader
+  id: fully-equal-gator-c42be26a-156b-49d1-b348-48ffb8c059c2
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.0516970862879647}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.425680758240651}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 5.384302322628429}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 5.136249802605246}
+      heritage: !!python/object:pbt.param.Heritage {v: XL}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 84e934b0-bd2c-4c38-844f-612bede9375e, warm_start_from: null}
+  recent_steps: 6000
+  results: {accuracy: 0.8357387781143188, correct_elements: 48.38486862182617, loss: 3.132172107696533,
+    total_elements: 52.25}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6087613
+  total_steps: 46000
+gladly-guided-bunny-86f6a26d-03f8-4320-9a89-da967ebe76d7: !!python/object:pbt.specs.WorkerHeader
+  id: gladly-guided-bunny-86f6a26d-03f8-4320-9a89-da967ebe76d7
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.0790542381097437}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.6581719809749589}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 5.552332573215035}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 4.770942318120823}
+      heritage: !!python/object:pbt.param.Heritage {v: XZ}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 8e25e173-00f7-43f9-b900-1f981ca542a9, warm_start_from: null}
+  recent_steps: 8000
+  results: {accuracy: 0.7669689059257507, correct_elements: 48.52796173095703, loss: 6.508693695068359,
+    total_elements: 57.078125}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6079786
+  total_steps: 48000
+humbly-enough-lemur-6f475bc7-e916-4724-8a7c-d11cbe19b629: !!python/object:pbt.specs.WorkerHeader
+  id: humbly-enough-lemur-6f475bc7-e916-4724-8a7c-d11cbe19b629
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 8}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 8}
+      heritage: !!python/object:pbt.param.Heritage {v: I}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: b111a1b8-b38f-4a79-bbe4-77d6b500af15, warm_start_from: null}
+  recent_steps: 4000
+  results: {accuracy: 0.8843933939933777, correct_elements: 60.511512756347656, loss: 3.4216766357421875,
+    total_elements: 63.0625}
+  time_last_dispatched: 0
+  time_last_updated: 1527843317.4901292
+  total_steps: 52000
+lately-close-shrew-7bb5e767-c1f8-409d-acf3-d6159a6eb12a: !!python/object:pbt.specs.WorkerHeader
+  id: lately-close-shrew-7bb5e767-c1f8-409d-acf3-d6159a6eb12a
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.7667771511604702}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.1562266126432124}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 9.496167815877994}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 9.07555765901301}
+      heritage: !!python/object:pbt.param.Heritage {v: Ij}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 09bdaef0-4906-491c-9b3e-7e310e63ebff, warm_start_from: null}
+  recent_steps: 9000
+  results: {accuracy: 0.7656615972518921, correct_elements: 49.88815689086914, loss: 10.970731735229492,
+    total_elements: 63.0625}
+  time_last_dispatched: 0
+  time_last_updated: 1527843322.5315037
+  total_steps: 20000
+likely-sought-dory-d07d7d27-846b-45a8-83c3-8defccfa6a03: !!python/object:pbt.specs.WorkerHeader
+  id: likely-sought-dory-d07d7d27-846b-45a8-83c3-8defccfa6a03
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.519632969186971}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 0.8212681225422473}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 6.810974185453945}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 7.137147197168379}
+      heritage: !!python/object:pbt.param.Heritage {v: Ir}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: e99613ec-914c-461e-bd0b-7ca663da64b9, warm_start_from: null}
+  recent_steps: 8000
+  results: {accuracy: 0.6962577104568481, correct_elements: 41.21381759643555, loss: 11.031839370727539,
+    total_elements: 55.7734375}
+  time_last_dispatched: 0
+  time_last_updated: 1527843358.2492
+  total_steps: 8000
+lovely-calm-prawn-faaf1ad0-1360-43e3-ba7f-41eea44f23a5: !!python/object:pbt.specs.WorkerHeader
+  id: lovely-calm-prawn-faaf1ad0-1360-43e3-ba7f-41eea44f23a5
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.8554593168950353}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.6775183268578533}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 5.3177306119366055}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 6.564492661694041}
+      heritage: !!python/object:pbt.param.Heritage {v: XL}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: f27520f3-db5b-4276-99b7-d59d64bf2c70, warm_start_from: null}
+  recent_steps: 8000
+  results: {accuracy: 0.5119563937187195, correct_elements: 34.73190689086914, loss: 19.035537719726562,
+    total_elements: 61.25}
+  time_last_dispatched: 0
+  time_last_updated: 1527843336.0161898
+  total_steps: 8000
+merely-humane-mayfly-c52c2949-926e-4822-b5c6-6cbf108b0206: !!python/object:pbt.specs.WorkerHeader
+  id: merely-humane-mayfly-c52c2949-926e-4822-b5c6-6cbf108b0206
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 6}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 6}
+      heritage: !!python/object:pbt.param.Heritage {v: X}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: f8b2f0a3-35ac-4772-ad8f-6ac14033049f, warm_start_from: null}
+  recent_steps: 6000
+  results: {accuracy: 0.949999988079071, correct_elements: 65.0, loss: 0.0011516368249431252,
+    total_elements: 61.75}
+  time_last_dispatched: 0
+  time_last_updated: 1527843358.2490048
+  total_steps: 68000
+nearly-usable-alien-e2b1b9a6-3e25-4613-bc54-0392ee094ddc: !!python/object:pbt.specs.WorkerHeader
+  id: nearly-usable-alien-e2b1b9a6-3e25-4613-bc54-0392ee094ddc
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.837846105979193}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.0002720225357502}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 9.619197262961633}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 9.046826946567156}
+      heritage: !!python/object:pbt.param.Heritage {v: Ih}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 0301c0d5-bb6d-4dca-a640-c129b94de9b8, warm_start_from: null}
+  recent_steps: 5000
+  results: {accuracy: 0.6318361759185791, correct_elements: 42.57072448730469, loss: 14.605093002319336,
+    total_elements: 63.0625}
+  time_last_dispatched: 0
+  time_last_updated: 1527843358.248784
+  total_steps: 5000
+only-free-sponge-83e0dc4c-4ac5-4aea-bf73-58dde382852b: !!python/object:pbt.specs.WorkerHeader
+  id: only-free-sponge-83e0dc4c-4ac5-4aea-bf73-58dde382852b
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2.2839234356881977}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.6585525412537632}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 5.735448018960311}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 4.514867293270284}
+      heritage: !!python/object:pbt.param.Heritage {v: XRr}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 78ea7470-e62d-4947-8249-298d64b8219c, warm_start_from: null}
+  recent_steps: 7000
+  results: {accuracy: 0.5389859676361084, correct_elements: 34.0690803527832, loss: 16.682430267333984,
+    total_elements: 57.078125}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6084218
+  total_steps: 7000
+sadly-sharp-donkey-6d1d4969-e4aa-4b61-a4bf-a34c808b7db5: !!python/object:pbt.specs.WorkerHeader
+  id: sadly-sharp-donkey-6d1d4969-e4aa-4b61-a4bf-a34c808b7db5
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.9414720240361565}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 0.765411038064582}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 9.534109195462985}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 8.722473215708622}
+      heritage: !!python/object:pbt.param.Heritage {v: IM}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: ff631884-9fce-46b3-9a13-a69653bdc86f, warm_start_from: null}
+  recent_steps: 7000
+  results: {accuracy: 0.7651184797286987, correct_elements: 49.89802551269531, loss: 11.249738693237305,
+    total_elements: 63.0625}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6077971
+  total_steps: 27000
+simply-free-stork-5f42ed75-499c-49be-a320-3e5e05c4e26f: !!python/object:pbt.specs.WorkerHeader
+  id: simply-free-stork-5f42ed75-499c-49be-a320-3e5e05c4e26f
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.7817277188406215}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.0684464735450927}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 7.4308180640900385}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 8.1653705475476}
+      heritage: !!python/object:pbt.param.Heritage {v: Ia}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 5267b8ca-9705-4dff-8bb3-68cfd180c916, warm_start_from: null}
+  recent_steps: 8000
+  results: {accuracy: 0.7462377548217773, correct_elements: 45.44736862182617, loss: 11.247580528259277,
+    total_elements: 59.328125}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6081762
+  total_steps: 38000
+subtly-grand-sheep-ff5fcc5a-56a6-4dee-8789-724cab2ba657: !!python/object:pbt.specs.WorkerHeader
+  id: subtly-grand-sheep-ff5fcc5a-56a6-4dee-8789-724cab2ba657
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 2}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 6}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 4}
+      heritage: !!python/object:pbt.param.Heritage {v: l}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: 581f4a29-1067-4e00-82d4-3d11cb696fab, warm_start_from: null}
+  recent_steps: 3000
+  results: {accuracy: 0.8683330416679382, correct_elements: 49.75493240356445, loss: 2.7493624687194824,
+    total_elements: 51.75}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6075752
+  total_steps: 51000
+vastly-comic-raptor-62a63a16-519d-49d1-90c2-9fbd3ac08516: !!python/object:pbt.specs.WorkerHeader
+  id: vastly-comic-raptor-62a63a16-519d-49d1-90c2-9fbd3ac08516
+  params: !!python/object/new:pbt.params.Mutateable
+    dictitems:
+      dataset: !!python/object:experiment.helpers.DatasetParam
+        batch_size: 32
+        v:
+          length: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 1.9726814862496371}
+            - !!python/object:pbt.param.IntParam {max: 2, min: 1, v: 0.9087127973002225}
+          repeats: !!python/object:pbt.param.RangeParam
+            v:
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 9.56675981780715}
+            - !!python/object:pbt.param.IntParam {max: 8, min: 1, v: 6.952424024997842}
+      heritage: !!python/object:pbt.param.Heritage {v: IS}
+      model_id: !!python/object:pbt.param.ModelId
+        v: {cur: a7b311ce-1414-4b99-aaff-2e7ce5d07b0c, warm_start_from: null}
+  recent_steps: 4000
+  results: {accuracy: 0.747655987739563, correct_elements: 45.58388137817383, loss: 11.198068618774414,
+    total_elements: 59.328125}
+  time_last_dispatched: 0
+  time_last_updated: 1527843344.6072912
+  total_steps: 36000
