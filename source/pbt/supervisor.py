@@ -199,11 +199,17 @@ class Supervisor(object):
 						self.add_worker() # dispatches the worker
 						return
 
+				else:
+					logger.debug("Not enough workers ({}) with results to cull and add new workers".format(len(stack)))
+
 			except ValueError:
 				# It's ok we couldn't index that worker, it means they've no score yet
 				pass
 
 			self.dispatch(worker)
+
+		else:
+			logger.debug("Worker {} has not worked enough {} < {} to consider exploit".format(self.name_fn(worker), self.args.micro_step * self.args.macro_step, worker.recent_steps))
 
 
 	def find_partner(self, worker):

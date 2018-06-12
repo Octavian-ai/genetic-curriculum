@@ -103,7 +103,7 @@ class WorkerHeader(object):
 		return WorkerHeader(params)
 
 	def mutate(self, heat):
-		params = self.params.mutate(self.args.heat)
+		params = self.params.mutate(heat)
 		return WorkerHeader(params)
 
 
